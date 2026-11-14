@@ -1,0 +1,28 @@
+plugins {
+    id 'java'
+    id 'net.neoforged.moddev' version '2.0.78'
+}
+
+group = 'dev.backseatriders'
+version = '0.1.0'
+base { archivesName = 'backseat-riders' }
+
+java.toolchain.languageVersion = JavaLanguageVersion.of(21)
+
+neoForge {
+    version = '21.1.249'
+    runs {
+        configureEach { systemProperty 'neoforge.enabledGameTestNamespaces', 'backseatriders' }
+        client {}
+        server { programArgument '--nogui' }
+    }
+    mods { backseatriders { sourceSet sourceSets.main } }
+}
+
+dependencies {
+    implementation 'org.spongepowered:mixin:0.8.7'
+    annotationProcessor 'org.spongepowered:mixin:0.8.7:processor'
+}
+
+tasks.withType(JavaCompile).configureEach { options.encoding = 'UTF-8'; options.release = 21 }
+

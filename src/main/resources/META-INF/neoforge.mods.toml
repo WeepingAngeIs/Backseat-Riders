@@ -1,0 +1,29 @@
+modLoader="javafml"
+loaderVersion="[4,)"
+license="MIT"
+[[mods]]
+modId="backseatriders"
+version="${file.jarVersion}"
+displayName="Backseat Riders"
+description='''Owner-managed trusted riders for native Cobblemon Pok�mon. Requires Cobblemon 1.8.4 on NeoForge 1.21.1.'''
+[[dependencies.backseatriders]]
+modId="neoforge"
+type="required"
+versionRange="[21.1.249,21.2)"
+ordering="NONE"
+side="BOTH"
+[[mixins]]
+config="backseatriders.mixins.json"
+[[dependencies.backseatriders]]
+modId="minecraft"
+type="required"
+versionRange="[1.21.1,1.21.2)"
+ordering="NONE"
+side="BOTH"
+[[dependencies.backseatriders]]
+modId="cobblemon"
+type="required"
+versionRange="[1.8.4,1.9)"
+ordering="AFTER"
+side="BOTH"
+
