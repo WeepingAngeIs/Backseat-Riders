@@ -7,7 +7,10 @@ group = 'dev.backseatriders'
 version = '0.1.0'
 base { archivesName = 'backseat-riders' }
 
-repositories { mavenCentral() }
+repositories {
+    mavenCentral()
+    maven { url = 'https://api.modrinth.com/maven' }
+}
 
 java.toolchain.languageVersion = JavaLanguageVersion.of(21)
 
@@ -23,6 +26,7 @@ neoForge {
 
 dependencies {
     implementation 'org.spongepowered:mixin:0.8.7'
+    compileOnly 'maven.modrinth:MdwFAVRL:xsVHrAsY'
     annotationProcessor 'org.spongepowered:mixin:0.8.7:processor'
     testImplementation 'org.junit.jupiter:junit-jupiter:5.11.4'
 }
