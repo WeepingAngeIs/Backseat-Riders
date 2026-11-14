@@ -1,6 +1,5 @@
 package dev.backseatriders;
 
-import com.mojang.brigadier.arguments.StringArgumentType;
 import net.minecraft.commands.Commands;
 import net.minecraft.commands.arguments.EntityArgument;
 import net.minecraft.network.chat.Component;
@@ -33,8 +32,7 @@ public final class BackseatRiders {
             return 0;
         }
         var data = RideableTrustData.get(owner.serverLevel());
-        data.registerOwner(mount.getUUID(), RideableTrustData.ownerId(mount));
-        boolean changed = allow ? data.trust(mount.getUUID(), target.getUUID()) : data.revoke(mount.getUUID(), target.getUUID());
+        boolean changed = allow ? data.trust(owner.getUUID(), target.getUUID()) : data.revoke(owner.getUUID(), target.getUUID());
         if (!allow && changed && mount.equals(target.getVehicle())) target.stopRiding();
         owner.sendSystemMessage(Component.literal(changed
             ? (allow ? "Trusted " : "Revoked ") + target.getGameProfile().getName() + " for this Pok�mon."
@@ -48,7 +46,7 @@ public final class BackseatRiders {
             owner.sendSystemMessage(Component.literal("Ride a Pok�mon you own to view its riders."));
             return 0;
         }
-        var names = RideableTrustData.get(owner.serverLevel()).trusted(mount.getUUID()).stream()
+        var names = RideableTrustData.get(owner.serverLevel()).trusted(owner.getUUID()).stream()
             .map(id -> owner.getServer().getProfileCache().get(id).map(p -> p.getName()).orElse(id.toString())).toList();
         owner.sendSystemMessage(Component.literal(names.isEmpty() ? "No trusted riders." : "Trusted riders: " + String.join(", ", names)));
         return names.size();

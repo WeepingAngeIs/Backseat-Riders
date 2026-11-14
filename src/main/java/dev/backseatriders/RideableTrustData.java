@@ -7,17 +7,15 @@ import net.minecraft.nbt.CompoundTag;
 import net.minecraft.nbt.ListTag;
 import net.minecraft.nbt.Tag;
 import net.minecraft.server.level.ServerLevel;
+import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.world.entity.Entity;
 import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.level.saveddata.SavedData;
 
-/** Per-world, UUID-only rider permissions. Names are resolved only for display. */
+/** Owner-wide UUID rider permissions. Names are resolved only for display. */
 public final class RideableTrustData extends SavedData {
     private static final String KEY = "backseat_riders_trust";
-    private final Map<UUID, Entry> entries = new HashMap<>();
-
-    private record Entry(UUID owner, Set<UUID> riders) {}
-
+    private final Map<UUID, Set<UUID>> entries = new HashMap<>();
     private static final Factory<RideableTrustData> FACTORY = new Factory<>(RideableTrustData::new, RideableTrustData::load, null);
 
     public static RideableTrustData get(ServerLevel level) {
@@ -34,59 +32,47 @@ public final class RideableTrustData extends SavedData {
     }
 
     public static boolean canRide(Entity entity, Player player) {
+        if (!(player instanceof ServerPlayer serverPlayer)) return false;
         UUID owner = ownerId(entity);
-        if (owner == null) return false;
-        Entry entry = get(((net.minecraft.server.level.ServerPlayer) player).serverLevel()).entries.get(entity.getUUID());
-        return TrustPolicy.permits(owner, entry == null ? null : entry.owner(), player.getUUID(),
-            entry == null ? Set.of() : entry.riders());
+        return owner != null && entity.isAlive() && hasFreeSeat(entity)
+            && TrustPolicy.permits(owner, player.getUUID(), get(serverPlayer.serverLevel()).trusted(owner));
+    }
+
+    private static boolean hasFreeSeat(Entity entity) {
+        try {
+            Object seats = entity.getClass().getMethod("getSeats").invoke(entity);
+            Object occupied = entity.getClass().getMethod("getOccupiedSeats").invoke(entity);
+            return seats instanceof List<?> seatList && occupied instanceof Map<?, ?> occupiedMap
+                && seatList.size() > occupiedMap.size();
+        } catch (ReflectiveOperationException ignored) {
+            return false;
+        }
     }
 
     public static UUID ownerId(Entity entity) {
         try {
-            Method method = entity.getClass().getMethod("getOwnerUUID");
-            Object value = method.invoke(entity);
+            Object value = entity.getClass().getMethod("getOwnerUUID").invoke(entity);
             return value instanceof UUID id ? id : null;
         } catch (ReflectiveOperationException ignored) {
             return null;
         }
     }
 
-    public boolean trust(UUID pokemon, UUID rider) {
-        Entry old = entries.get(pokemon);
-        if (old != null && old.riders().contains(rider)) return false;
-        UUID owner = old == null ? null : old.owner();
-        // Owner is captured from the live Pok�mon by registerOwner before this is called.
-        if (owner == null) return false;
-        Set<UUID> riders = old == null ? new HashSet<>() : new HashSet<>(old.riders());
-        riders.add(rider);
-        entries.put(pokemon, new Entry(owner, riders));
+    public boolean trust(UUID owner, UUID rider) {
+        if (!entries.computeIfAbsent(owner, ignored -> new HashSet<>()).add(rider)) return false;
         setDirty();
         return true;
     }
 
-    public void registerOwner(UUID pokemon, UUID owner) {
-        Entry old = entries.get(pokemon);
-        if (old == null || !owner.equals(old.owner())) {
-            // Ownership changes revoke all former owner's grants.
-            entries.put(pokemon, new Entry(owner, new HashSet<>()));
-            setDirty();
-        }
-    }
-
-    public boolean revoke(UUID pokemon, UUID rider) {
-        Entry old = entries.get(pokemon);
-        if (old == null || !old.riders().contains(rider)) return false;
-        Set<UUID> riders = new HashSet<>(old.riders());
-        riders.remove(rider);
-        entries.put(pokemon, new Entry(old.owner(), riders));
+    public boolean revoke(UUID owner, UUID rider) {
+        Set<UUID> riders = entries.get(owner);
+        if (riders == null || !riders.remove(rider)) return false;
+        if (riders.isEmpty()) entries.remove(owner);
         setDirty();
         return true;
     }
 
-    public Set<UUID> trusted(UUID pokemon) {
-        Entry entry = entries.get(pokemon);
-        return entry == null ? Set.of() : Set.copyOf(entry.riders());
-    }
+    public Set<UUID> trusted(UUID owner) { return Set.copyOf(entries.getOrDefault(owner, Set.of())); }
 
     public static RideableTrustData load(CompoundTag tag, HolderLookup.Provider registries) {
         RideableTrustData data = new RideableTrustData();
@@ -94,12 +80,11 @@ public final class RideableTrustData extends SavedData {
         for (Tag element : list) {
             CompoundTag row = (CompoundTag) element;
             try {
-                UUID pokemon = row.getUUID("pokemon");
                 UUID owner = row.getUUID("owner");
                 Set<UUID> riders = new HashSet<>();
                 ListTag trusted = row.getList("riders", Tag.TAG_COMPOUND);
                 for (Tag id : trusted) riders.add(((CompoundTag) id).getUUID("id"));
-                data.entries.put(pokemon, new Entry(owner, riders));
+                if (!riders.isEmpty()) data.entries.put(owner, riders);
             } catch (IllegalArgumentException ignored) { /* Skip malformed rows. */ }
         }
         return data;
@@ -107,12 +92,11 @@ public final class RideableTrustData extends SavedData {
 
     @Override public CompoundTag save(CompoundTag tag, HolderLookup.Provider registries) {
         ListTag list = new ListTag();
-        entries.forEach((pokemon, entry) -> {
+        entries.forEach((owner, riderIds) -> {
             CompoundTag row = new CompoundTag();
-            row.putUUID("pokemon", pokemon);
-            row.putUUID("owner", entry.owner());
+            row.putUUID("owner", owner);
             ListTag riders = new ListTag();
-            entry.riders().forEach(id -> { CompoundTag value = new CompoundTag(); value.putUUID("id", id); riders.add(value); });
+            riderIds.forEach(id -> { CompoundTag value = new CompoundTag(); value.putUUID("id", id); riders.add(value); });
             row.put("riders", riders);
             list.add(row);
         });

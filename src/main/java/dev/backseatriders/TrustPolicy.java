@@ -7,8 +7,8 @@ import java.util.UUID;
 final class TrustPolicy {
     private TrustPolicy() {}
 
-    static boolean permits(UUID liveOwner, UUID registeredOwner, UUID rider, Set<UUID> trustedRiders) {
-        return liveOwner != null && liveOwner.equals(registeredOwner) && trustedRiders.contains(rider);
+    static boolean permits(UUID owner, UUID rider, Set<UUID> trustedRiders) {
+        return owner != null && trustedRiders.contains(rider);
     }
 }
 

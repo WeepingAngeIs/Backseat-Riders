@@ -11,10 +11,11 @@ import org.spongepowered.asm.mixin.injection.callback.CallbackInfoReturnable;
 
 @Mixin(targets = "com.cobblemon.mod.common.entity.pokemon.PokemonEntity", remap = false)
 public abstract class PokemonRidingMixin {
-    /** Preserve Cobblemon's native owner/battle/seat checks; add only an owner-approved exception. */
-    @Inject(method = "isRideableFor", at = @At("HEAD"), cancellable = true, remap = false)
+    /** Let the native test run first, then allow the owner-approved passenger exception if a seat remains. */
+    @Inject(method = "isRideableFor", at = @At("RETURN"), cancellable = true, remap = false)
     private void backseatriders$allowTrusted(ServerPlayer player, CallbackInfoReturnable<Boolean> cir) {
-        if (RideableTrustData.canRide((Entity) (Object) this, player)) cir.setReturnValue(true);
+        Entity pokemon = (Entity) (Object) this;
+        if (!cir.getReturnValue() && RideableTrustData.canRide(pokemon, player)) cir.setReturnValue(true);
     }
 
     /** Keep the native selected driver when one exists; otherwise let a trusted onboard rider drive. */
