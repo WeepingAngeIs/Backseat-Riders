@@ -7,6 +7,8 @@ group = 'dev.backseatriders'
 version = '0.1.0'
 base { archivesName = 'backseat-riders' }
 
+repositories { mavenCentral() }
+
 java.toolchain.languageVersion = JavaLanguageVersion.of(21)
 
 neoForge {
@@ -22,7 +24,10 @@ neoForge {
 dependencies {
     implementation 'org.spongepowered:mixin:0.8.7'
     annotationProcessor 'org.spongepowered:mixin:0.8.7:processor'
+    testImplementation 'org.junit.jupiter:junit-jupiter:5.11.4'
 }
 
 tasks.withType(JavaCompile).configureEach { options.encoding = 'UTF-8'; options.release = 21 }
+tasks.withType(Test).configureEach { useJUnitPlatform() }
+tasks.jar { manifest { attributes('MixinConfigs': 'backseatriders.mixins.json') } }
 

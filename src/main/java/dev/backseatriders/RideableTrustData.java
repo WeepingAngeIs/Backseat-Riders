@@ -37,7 +37,8 @@ public final class RideableTrustData extends SavedData {
         UUID owner = ownerId(entity);
         if (owner == null) return false;
         Entry entry = get(((net.minecraft.server.level.ServerPlayer) player).serverLevel()).entries.get(entity.getUUID());
-        return entry != null && entry.owner().equals(owner) && entry.riders().contains(player.getUUID());
+        return TrustPolicy.permits(owner, entry == null ? null : entry.owner(), player.getUUID(),
+            entry == null ? Set.of() : entry.riders());
     }
 
     public static UUID ownerId(Entity entity) {
