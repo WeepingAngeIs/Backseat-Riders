@@ -22,6 +22,14 @@ jobs:
           gradle-version: '8.10.2'
       - name: Build mod jar
         run: gradle --no-daemon clean build
+      - name: Inspect Cobblemon riding bytecode
+        if: always()
+        continue-on-error: true
+        run: |
+          cobblemon_jar="$(find ~/.gradle/caches/modules-2/files-2.1/maven.modrinth/MdwFAVRL/xsVHrAsY -name '*.jar' -print -quit)"
+          if [ -n "$cobblemon_jar" ]; then
+            javap -classpath "$cobblemon_jar" -p -c com.cobblemon.mod.common.entity.pokemon.PokemonEntity | sed -n '/isRideableFor(/,/^  public/p' | head -100
+          fi
       - uses: actions/upload-artifact@v4
         with:
           name: backseat-riders-${{ github.sha }}

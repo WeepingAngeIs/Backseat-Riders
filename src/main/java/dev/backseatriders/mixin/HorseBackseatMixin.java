@@ -11,7 +11,7 @@ import org.spongepowered.asm.mixin.injection.callback.CallbackInfoReturnable;
 
 @Mixin(Entity.class)
 public abstract class HorseBackseatMixin {
-    @Inject(method = "canAddPassenger", at = @At("HEAD"), cancellable = true)
+    @Inject(method = "canAddPassenger", at = @At("HEAD"), cancellable = true, remap = false)
     private void backseatriders$allowSecondHorseRider(Entity passenger, CallbackInfoReturnable<Boolean> cir) {
         Entity vehicle = (Entity) (Object) this;
         if (vehicle instanceof AbstractHorse horse && horse.isTamed() && passenger instanceof Player
@@ -20,7 +20,7 @@ public abstract class HorseBackseatMixin {
         }
     }
 
-    @Inject(method = "positionRider", at = @At("TAIL"))
+    @Inject(method = "positionRider", at = @At("TAIL"), remap = false)
     private void backseatriders$spaceSecondHorseRider(Entity passenger, Entity.MoveFunction move, CallbackInfo ci) {
         Entity vehicle = (Entity) (Object) this;
         if (!(vehicle instanceof AbstractHorse horse) || horse.getPassengers().size() < 2

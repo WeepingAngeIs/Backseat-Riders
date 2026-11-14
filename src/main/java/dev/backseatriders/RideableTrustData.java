@@ -32,9 +32,13 @@ public final class RideableTrustData extends SavedData {
     }
 
     public static boolean canRide(Entity entity, Player player) {
+        return hasFreeSeat(entity) && isTrusted(entity, player);
+    }
+
+    public static boolean isTrusted(Entity entity, Player player) {
         if (!(player instanceof ServerPlayer serverPlayer)) return false;
         UUID owner = ownerId(entity);
-        return owner != null && entity.isAlive() && hasFreeSeat(entity)
+        return owner != null && entity.isAlive()
             && TrustPolicy.permits(owner, player.getUUID(), get(serverPlayer.serverLevel()).trusted(owner));
     }
 

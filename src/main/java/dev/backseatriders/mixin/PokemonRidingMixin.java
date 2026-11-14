@@ -24,7 +24,7 @@ public abstract class PokemonRidingMixin {
         if (cir.getReturnValue() != null) return;
         Entity pokemon = (Entity) (Object) this;
         for (Entity passenger : pokemon.getPassengers()) {
-            if (passenger instanceof ServerPlayer player && RideableTrustData.canRide(pokemon, player)) {
+            if (passenger instanceof ServerPlayer player && RideableTrustData.isTrusted(pokemon, player)) {
                 cir.setReturnValue(player);
                 return;
             }
