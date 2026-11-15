@@ -157,14 +157,14 @@ public final class SeatEditorScreen extends Screen {
         graphics.drawString(font, String.format(java.util.Locale.ROOT, "Y %.1f", current.y), left + 88, top + 144, 0xFFFFFF);
         graphics.drawString(font, String.format(java.util.Locale.ROOT, "Z %.1f", current.z), left + 88, top + 172, 0xFFFFFF);
 
-        drawPreview(graphics);
+        drawPreview(graphics, mouseX, mouseY);
         graphics.drawString(font, "Locator (blank = body fallback)", left + 26, top + 181, 0xA8B8C8);
         if (!validationMessage.isEmpty()) graphics.drawString(font, validationMessage, left + 26, top + 217, 0xFFFF6666);
         graphics.drawCenteredString(font, "Top view | generated-seat markers", left + 312, top + 196, 0xA8B8C8);
         graphics.drawCenteredString(font, "Native seat totals are preserved", left + 312, top + 209, 0xA8B8C8);
     }
 
-    private void drawPreview(GuiGraphics graphics) {
+    private void drawPreview(GuiGraphics graphics, int mouseX, int mouseY) {
         int panelX = left + 226;
         int panelY = top + 34;
         graphics.fill(panelX, panelY, panelX + 172, panelY + 153, 0xCC15202B);
