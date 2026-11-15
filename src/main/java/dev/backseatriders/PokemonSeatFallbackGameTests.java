@@ -8,14 +8,21 @@ import com.cobblemon.mod.common.pokemon.Species;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.UUID;
+import com.mojang.authlib.GameProfile;
+import io.netty.channel.embedded.EmbeddedChannel;
 import net.minecraft.core.registries.BuiltInRegistries;
 import net.minecraft.nbt.CompoundTag;
 import net.minecraft.gametest.framework.GameTest;
 import net.minecraft.gametest.framework.GameTestHelper;
+import net.minecraft.network.Connection;
+import net.minecraft.network.protocol.PacketFlow;
 import net.neoforged.neoforge.gametest.PrefixGameTestTemplate;
 import net.minecraft.resources.ResourceLocation;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.server.level.ServerPlayer;
+import net.minecraft.server.network.CommonListenerCookie;
+import net.minecraft.server.network.ServerGamePacketListenerImpl;
 import net.minecraft.world.entity.Entity;
 import net.minecraft.world.entity.EntityType;
 import net.minecraft.world.phys.Vec3;
@@ -43,7 +50,7 @@ public final class PokemonSeatFallbackGameTests {
         helper.assertTrue(bulbasaurHasFallback && !behaviorWithoutSeatProfile,
             "Bulbasaur fallback must be generated without claiming it has a native profile");
 
-        ServerPlayer simulatedOwner = helper.makeMockServerPlayerInLevel();
+        ServerPlayer simulatedOwner = createConnectedTestPlayer(helper, level);
         if (simulatedOwner.getVehicle() != null) simulatedOwner.stopRiding();
         PokemonEntity ownedBulbasaur = createPokemonEntity(helper, level, "bulbasaur");
         ownedBulbasaur.setOwnerUUID(simulatedOwner.getUUID());
@@ -166,6 +173,16 @@ public final class PokemonSeatFallbackGameTests {
         pokemon.setPos(0.0, 5.0, 0.0);
         helper.assertTrue(level.addFreshEntity(pokemon), "Could not add test Pokemon: " + name);
         return pokemon;
+    }
+
+    private static ServerPlayer createConnectedTestPlayer(GameTestHelper helper, ServerLevel level) {
+        GameProfile profile = new GameProfile(UUID.randomUUID(), "BackseatRidersTest");
+        CommonListenerCookie cookie = CommonListenerCookie.createInitial(profile, false);
+        ServerPlayer player = new ServerPlayer(level.getServer(), level, profile, cookie.clientInformation());
+        Connection connection = new Connection(PacketFlow.SERVERBOUND);
+        new EmbeddedChannel(connection);
+        player.connection = new ServerGamePacketListenerImpl(level.getServer(), connection, player, cookie);
+        return player;
     }
 }
 
