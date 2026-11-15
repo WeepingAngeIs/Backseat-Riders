@@ -1,26 +1,28 @@
 # Backseat Riders
 
-Backseat Riders is a NeoForge mod for Minecraft 1.21.1, NeoForge 21.1.249, and Cobblemon 1.8.4.
+Backseat Riders targets Minecraft 1.21.1, NeoForge 21.1.249, and Cobblemon 1.8.4.
 
 ## Implemented
 
-- Owner-wide \`/rideables trust <player|UUID>\`, \`/rideables revoke <player|UUID>\`, and \`/rideables list\` commands. Trust data is keyed by owner UUID and trusted-player UUID; commands do not require mounting, and offline UUIDs can be revoked.
-- Cobblemon's native rideability restrictions remain in place apart from the owner/passenger access gate. Trusted riders can board sent-out Pokémon when the owner is absent. When Cobblemon has no selected controller, an onboard trusted rider is selected and synchronized to clients.
-- One fallback body-attached seat is added only when a Pokémon form has exactly one eligible native seat. Existing profiles with two or more seats are unchanged. Forms with zero eligible seats remain nonrideable.
-- The generated seat uses a bounded body-relative position on both client and server after Cobblemon's delegate positions the rider. It does not follow animated model bones.
-- Tamed horses accept the owner or a trusted party member as a second rider when the second player has an empty hand. The first passenger remains the controller.
+- Owner-wide UUID trust through `/rideables trust <player|UUID>`, `/rideables revoke <player|UUID>`, and `/rideables list`. Owners can manage grants without mounting a Pok�mon; offline UUIDs can be revoked. Revocation dismounts an online trusted rider from the owner's Pok�mon or horse.
+- Cobblemon's native rideability checks remain in place. Trusted riders can board an owner's eligible sent-out Pok�mon and may drive when configured. The owner remains the preferred native controller. Server-side saved data stores trust and rideable settings.
+- A default minimum of two seats for native rideable Pok�mon forms. Existing native seat profiles with more seats are retained. For forms with no native seat definitions, fallback seats are generated only when Cobblemon still provides a native riding behavior; forms without riding behavior remain nonrideable.
+- Stable fallback seat identities and synced seat counts. The fallback position is body-relative on both client and server; configured minimums can expand to 16 seats. Seat reduction does not evict existing occupants.
+- Tamed horse second rider for the owner or trusted player, with empty hand. The first passenger remains the controller.
+- Operator commands: `/rideables settings show`, `/rideables settings minimum-seats <2..16>`, `/rideables settings trusted-board <true|false>`, and `/rideables settings trusted-drive <true|false>`. These settings persist in overworld saved data. Turning trusted boarding off dismounts non-owner passengers from owned Pok�mon and horses.
 
 ## Verification
 
-- GitHub Actions builds and runs JUnit tests on Java 21.
-- A disposable dedicated server launches with Cobblemon 1.8.4 and checks mod/mixin loading.
-- A disposable NeoForge GameTest constructs a single-seat Charizard, two-seat Dewgong, and zero-seat Bulbasaur; checks effective seat counts and stable fallback-seat identity; attaches a test passenger, invokes server passenger positioning, and checks finite coordinates at the expected body-relative position. This test verifies server logic, not real-player behavior or client rendering.
-- The mod has not been installed into the live Minecraft instance, and no worlds have been changed.
+- GitHub Actions compiles on Java 21 and runs JUnit policy/position tests.
+- A disposable NeoForge 21.1.249 server launches with Cobblemon 1.8.4 and checks mixin application.
+- A disposable GameTest checks one-seat Charizard fallback, two-seat Dewgong and six-seat Camerupt preservation, Bulbasaur's zero-seat behavior eligibility, configured seat expansion, stable seat identity, and server passenger positioning. This is server logic verification, not player multiplayer or client visual testing.
+- The mod has not been installed in the live CurseForge instance, and no worlds or servers have been modified.
 
 ## Deferred or not verified
 
-The visual seat editor, admin seat-count settings, per-species/form position profiles, locator/bone attachment authoring, animated-bone seat motion, and generic cows/sheep/armadillos are deferred. Passenger item/Poké Ball use, manual steering handoff, and complex battle/recall/portal/disconnect interactions are not added. Horse interactions/dismount and real multiplayer steering still need in-game verification. GameTest checks server positioning logic, not visual alignment in the client; the body fallback should be reviewed on different Pokémon models and scales.
+The visual `/rideables settings` editor, species/form-specific seat profiles and saved positions, animated model-bone/locator binding, and added ride behaviors for Pok�mon that do not already have native Cobblemon riding behavior are not implemented. The fallback is a body attachment and may need per-model tuning. Generic cows, sheep, armadillos, item/Pok� Ball use by passengers, manual steering handoff, and real multiplayer horse/creature interaction are not verified. Battle, recall, portal, disconnect, resource reload, and scale/race interactions still need disposable in-game testing.
 
 ## Build and install
 
-GitHub Actions uses Java 21 and produces \`build/libs/backseat-riders-0.1.0.jar\`. Install it alongside matching Cobblemon 1.8.4 on both the server and every client.
+GitHub Actions builds `build/libs/backseat-riders-0.1.0.jar`. Install it on the server and every client with matching Cobblemon 1.8.4. Compilation and GameTest results do not establish real-player in-game behavior.
+
