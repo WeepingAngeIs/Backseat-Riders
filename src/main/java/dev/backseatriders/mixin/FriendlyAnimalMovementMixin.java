@@ -19,7 +19,7 @@ import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
 /** Ground-only, server-authoritative walking controls for explicitly registered animals. */
 @Mixin(LivingEntity.class)
 public abstract class FriendlyAnimalMovementMixin {
-    @Inject(method = "travel", at = @At("HEAD"), cancellable = true)
+    @Inject(method = "travel", at = @At("HEAD"), cancellable = true, remap = false)
     private void backseatriders$driveRegisteredAnimal(Vec3 ignoredInput, CallbackInfo ci) {
         LivingEntity living = (LivingEntity) (Object) this;
         if (!(living instanceof Mob animal) || !FriendlyAnimalRidePolicy.supports(animal)
