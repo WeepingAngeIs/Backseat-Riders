@@ -64,8 +64,9 @@ jobs:
             kill "$server_pid" 2>/dev/null || true
             exit 1
           fi
-          grep -E 'Done \(|backseatriders\.mixins\.json|PokemonRidingMixin|HorseBackseatMixin' server-smoke.log
+          grep -E 'Done \(|backseatriders\.mixins\.json|PokemonRidingMixin|PokemonSeatFallbackMixin|HorseBackseatMixin' server-smoke.log
           grep -q 'PokemonRidingMixin' server-smoke.log
+          grep -q 'PokemonSeatFallbackMixin' server-smoke.log
           grep -q 'HorseBackseatMixin' server-smoke.log
           kill "$server_pid" 2>/dev/null || true
           wait "$server_pid" || true
@@ -79,4 +80,3 @@ jobs:
             riding-api.log
             riding-classes.txt
           if-no-files-found: ignore
-
