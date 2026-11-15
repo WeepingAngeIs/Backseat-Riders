@@ -6,7 +6,9 @@
   "mixins": [
     "PokemonRidingMixin",
     "PokemonSeatFallbackMixin",
-    "HorseBackseatMixin"
+    "HorseBackseatMixin",
+    "FriendlyAnimalRidingMixin",
+    "FriendlyAnimalMovementMixin"
   ],
   "server": [
     "PokemonSeatFallbackServerMixin"

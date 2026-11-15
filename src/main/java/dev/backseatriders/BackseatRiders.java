@@ -13,6 +13,8 @@ import net.minecraft.world.InteractionResult;
 import net.minecraft.world.entity.animal.horse.AbstractHorse;
 import net.minecraft.world.entity.Entity;
 import com.cobblemon.mod.common.entity.pokemon.PokemonEntity;
+import net.minecraft.commands.arguments.EntityArgument;
+import net.neoforged.bus.api.EventPriority;
 import net.neoforged.bus.api.SubscribeEvent;
 import net.neoforged.bus.api.IEventBus;
 import net.neoforged.neoforge.event.RegisterGameTestsEvent;
@@ -43,6 +45,21 @@ public final class BackseatRiders {
             .then(Commands.literal("revoke").then(Commands.argument("player", StringArgumentType.word())
                 .executes(ctx -> changeTrust(ctx.getSource().getPlayerOrException(), StringArgumentType.getString(ctx, "player"), false))))
             .then(Commands.literal("list").executes(ctx -> listTrusted(ctx.getSource().getPlayerOrException())))
+            .then(Commands.literal("animal").requires(source -> source.hasPermission(2))
+                .then(Commands.literal("register")
+                    .then(Commands.argument("animal", EntityArgument.entity())
+                        .then(Commands.argument("owner", StringArgumentType.word())
+                            .executes(ctx -> registerFriendlyAnimal(ctx.getSource().getPlayerOrException(),
+                                EntityArgument.getEntity(ctx, "animal"), StringArgumentType.getString(ctx, "owner"))))))
+                .then(Commands.literal("transfer")
+                    .then(Commands.argument("animal", EntityArgument.entity())
+                        .then(Commands.argument("owner", StringArgumentType.word())
+                            .executes(ctx -> transferFriendlyAnimal(ctx.getSource().getPlayerOrException(),
+                                EntityArgument.getEntity(ctx, "animal"), StringArgumentType.getString(ctx, "owner"))))))
+                .then(Commands.literal("unregister")
+                    .then(Commands.argument("animal", EntityArgument.entity())
+                        .executes(ctx -> unregisterFriendlyAnimal(ctx.getSource().getPlayerOrException(),
+                            EntityArgument.getEntity(ctx, "animal"))))))
             .then(Commands.literal("handoff")
                 .then(Commands.argument("player", StringArgumentType.word())
                     .executes(ctx -> handoffDriver(ctx.getSource().getPlayerOrException(),
@@ -66,6 +83,10 @@ public final class BackseatRiders {
                 .then(Commands.literal("ground-fallback")
                     .then(Commands.argument("enabled", BoolArgumentType.bool())
                         .executes(ctx -> setGroundFallback(ctx.getSource().getPlayerOrException(),
+                            BoolArgumentType.getBool(ctx, "enabled")))))
+                .then(Commands.literal("friendly-animals")
+                    .then(Commands.argument("enabled", BoolArgumentType.bool())
+                        .executes(ctx -> setFriendlyAnimals(ctx.getSource().getPlayerOrException(),
                             BoolArgumentType.getBool(ctx, "enabled")))))
                 .then(Commands.literal("ground-speed")
                     .then(Commands.argument("speed", DoubleArgumentType.doubleArg(0.02, 0.12))
@@ -101,14 +122,37 @@ public final class BackseatRiders {
                                     IntegerArgumentType.getInteger(ctx, "seat"))))))))));
     }
 
-    @SubscribeEvent
+    @SubscribeEvent(priority = EventPriority.LOWEST)
     public void onHorseBackseatInteract(PlayerInteractEvent.EntityInteract event) {
-        if (!(event.getEntity() instanceof ServerPlayer rider) || event.getHand() != InteractionHand.MAIN_HAND
+        if (event.isCanceled() || !(event.getEntity() instanceof ServerPlayer rider) || event.getHand() != InteractionHand.MAIN_HAND
                 || !(event.getTarget() instanceof AbstractHorse horse) || !horse.isTamed()
                 || horse.getPassengers().size() != 1 || !rider.getItemInHand(event.getHand()).isEmpty()) return;
         var ownerId = horse.getOwnerUUID();
         if (ownerId == null || !(ownerId.equals(rider.getUUID()) || RideableTrustData.isTrustedOwner(ownerId, rider))) return;
         if (rider.startRiding(horse, true)) {
+            event.setCanceled(true);
+            event.setCancellationResult(InteractionResult.CONSUME);
+        }
+    }
+
+    /** Boarding is opt-in, empty-handed, and only runs when no earlier interaction handler denied the action. */
+    @SubscribeEvent(priority = EventPriority.LOWEST)
+    public void onRegisteredFriendlyAnimalInteract(PlayerInteractEvent.EntityInteract event) {
+        if (event.isCanceled() || !(event.getEntity() instanceof ServerPlayer rider)
+                || event.getHand() != InteractionHand.MAIN_HAND || rider.isShiftKeyDown() || rider.isPassenger()
+                || !rider.getItemInHand(event.getHand()).isEmpty()) return;
+        Entity animal = event.getTarget();
+        if (!FriendlyAnimalRidePolicy.supports(animal) || !FriendlyAnimalRidePolicy.isAdult(animal)
+                || !animal.isAlive() || animal.getPassengers().size() >= FriendlyAnimalRidePolicy.MAX_PASSENGERS) return;
+        var settings = RideablesSettingsData.get(rider.serverLevel());
+        if (!settings.friendlyAnimalsEnabled()) return;
+        var owners = FriendlyAnimalData.get(rider.serverLevel());
+        UUID owner = owners.owner(animal);
+        if (owner == null) return;
+        boolean trusted = !owner.equals(rider.getUUID()) && RideableTrustData.isTrustedOwner(owner, rider);
+        if (!FriendlyAnimalRidePolicy.mayMount(true, owners.isRegistered(animal), true, true,
+                animal.isAlive(), animal.isRemoved(), animal.getPassengers().size(), owner, rider.getUUID(), trusted)) return;
+        if (FriendlyAnimalMountAttempt.startRiding(animal, rider)) {
             event.setCanceled(true);
             event.setCancellationResult(InteractionResult.CONSUME);
         }
@@ -129,7 +173,9 @@ public final class BackseatRiders {
         ServerPlayer onlineTarget = owner.getServer().getPlayerList().getPlayer(target);
         if (!allow && changed && onlineTarget != null) {
             Entity mount = onlineTarget.getVehicle();
-            if ((RideableTrustData.isPokemon(mount) || mount instanceof AbstractHorse)
+            boolean registeredAnimal = mount != null && FriendlyAnimalRidePolicy.supports(mount)
+                && FriendlyAnimalData.get(onlineTarget.serverLevel()).isRegistered(mount);
+            if ((RideableTrustData.isPokemon(mount) || mount instanceof AbstractHorse || registeredAnimal)
                     && owner.getUUID().equals(RideableTrustData.ownerId(mount))) {
                 onlineTarget.stopRiding();
             }
@@ -157,9 +203,70 @@ public final class BackseatRiders {
         return names.size();
     }
 
+    private static int registerFriendlyAnimal(ServerPlayer admin, Entity animal, String ownerKey) {
+        if (!FriendlyAnimalRidePolicy.supports(animal) || !FriendlyAnimalRidePolicy.isAdult(animal)
+                || !animal.isAlive() || animal.isRemoved()) {
+            admin.sendSystemMessage(Component.literal("Only living adult cows, sheep, and armadillos can be registered."));
+            return 0;
+        }
+        FriendlyAnimalData data = FriendlyAnimalData.get(admin.serverLevel());
+        if (data.isRegistered(animal)) {
+            admin.sendSystemMessage(Component.literal("This animal is already registered; use transfer to change its owner."));
+            return 0;
+        }
+        UUID owner = resolvePlayerId(admin, ownerKey);
+        if (owner == null) {
+            admin.sendSystemMessage(Component.literal("Unknown owner. Use a cached player name or UUID."));
+            return 0;
+        }
+        data.assign(animal.getUUID(), owner);
+        animal.getPassengers().forEach(Entity::stopRiding);
+        admin.sendSystemMessage(Component.literal("Registered this animal to " + resolvePlayerName(admin, owner)
+            + ". It is mountable only while the friendly-animal setting is enabled."));
+        return 1;
+    }
+
+    private static int transferFriendlyAnimal(ServerPlayer admin, Entity animal, String ownerKey) {
+        if (!FriendlyAnimalRidePolicy.supports(animal) || !FriendlyAnimalRidePolicy.isAdult(animal)
+                || !animal.isAlive() || animal.isRemoved()) {
+            admin.sendSystemMessage(Component.literal("Only living adult cows, sheep, and armadillos can be transferred."));
+            return 0;
+        }
+        FriendlyAnimalData data = FriendlyAnimalData.get(admin.serverLevel());
+        if (!data.isRegistered(animal)) {
+            admin.sendSystemMessage(Component.literal("This animal is not registered; use register to assign its first owner."));
+            return 0;
+        }
+        UUID owner = resolvePlayerId(admin, ownerKey);
+        if (owner == null) {
+            admin.sendSystemMessage(Component.literal("Unknown owner. Use a cached player name or UUID."));
+            return 0;
+        }
+        data.assign(animal.getUUID(), owner);
+        animal.getPassengers().forEach(Entity::stopRiding);
+        admin.sendSystemMessage(Component.literal("Transferred this animal to " + resolvePlayerName(admin, owner)
+            + "; all current riders were dismounted."));
+        return 1;
+    }
+
+    private static int unregisterFriendlyAnimal(ServerPlayer admin, Entity animal) {
+        FriendlyAnimalData data = FriendlyAnimalData.get(admin.serverLevel());
+        if (!data.remove(animal.getUUID())) {
+            admin.sendSystemMessage(Component.literal("This animal is not registered."));
+            return 0;
+        }
+        animal.getPassengers().forEach(Entity::stopRiding);
+        admin.sendSystemMessage(Component.literal("Removed this animal's assigned owner and dismounted its riders."));
+        return 1;
+    }
+
+    private static String resolvePlayerName(ServerPlayer requester, UUID id) {
+        return requester.getServer().getProfileCache().get(id).map(profile -> profile.getName()).orElse(id.toString());
+    }
+
     private static int handoffDriver(ServerPlayer requester, String playerKey) {
         if (!(requester.getVehicle() instanceof PokemonEntity pokemon)) {
-            requester.sendSystemMessage(Component.literal("You must be riding a Pok�mon to hand over steering."));
+            requester.sendSystemMessage(Component.literal("You must be riding a Pokémon to hand over steering."));
             return 0;
         }
         if (!(RideableTrustData.isOwner(pokemon, requester)
@@ -170,14 +277,14 @@ public final class BackseatRiders {
         UUID targetId = resolvePlayerId(requester, playerKey);
         ServerPlayer target = targetId == null ? null : requester.getServer().getPlayerList().getPlayer(targetId);
         if (target == null || target.getVehicle() != pokemon) {
-            requester.sendSystemMessage(Component.literal("The selected player must be online and riding this Pok�mon."));
+            requester.sendSystemMessage(Component.literal("The selected player must be online and riding this Pokémon."));
             return 0;
         }
         boolean eligible = GroundRideEligibility.hasNativeRidingBehaviour(pokemon)
             ? RideableTrustData.isOwner(pokemon, target) || RideableTrustData.isTrustedDriver(pokemon, target)
             : GroundRideEligibility.mayDrive(pokemon, target);
         if (!eligible) {
-            requester.sendSystemMessage(Component.literal("That rider is not authorized to drive this Pok�mon."));
+            requester.sendSystemMessage(Component.literal("That rider is not authorized to drive this Pokémon."));
             return 0;
         }
         ((PokemonDriverHandoffAccess) pokemon).backseatriders$requestDriver(java.util.Optional.of(target.getUUID()));
@@ -189,7 +296,7 @@ public final class BackseatRiders {
         if (!(requester.getVehicle() instanceof PokemonEntity pokemon)
                 || !(RideableTrustData.isOwner(pokemon, requester)
                     || RideableTrustData.isTrustedDriver(pokemon, requester))) {
-            requester.sendSystemMessage(Component.literal("You must be an authorized driver on a Pok�mon to reset steering."));
+            requester.sendSystemMessage(Component.literal("You must be an authorized driver on a Pokémon to reset steering."));
             return 0;
         }
         ((PokemonDriverHandoffAccess) pokemon).backseatriders$requestDriver(java.util.Optional.empty());
@@ -202,6 +309,7 @@ public final class BackseatRiders {
         admin.sendSystemMessage(Component.literal("Rideable settings: minimum seats=" + settings.minimumSeats()
             + ", trusted boarding=" + settings.trustedRidersCanBoard()
             + ", trusted driving=" + settings.trustedRidersCanDrive()
+            + ", friendly animals=" + settings.friendlyAnimalsEnabled()
             + ", behaviorless ground fallback=" + settings.groundFallbackEnabled()
             + ", ground speed=" + settings.groundFallbackSpeed()));
         return 1;
@@ -219,7 +327,9 @@ public final class BackseatRiders {
             for (ServerPlayer rider : admin.getServer().getPlayerList().getPlayers()) {
                 Entity vehicle = rider.getVehicle();
                 UUID owner = RideableTrustData.ownerId(vehicle);
-                if ((RideableTrustData.isPokemon(vehicle) || vehicle instanceof AbstractHorse)
+                boolean registeredAnimal = vehicle != null && FriendlyAnimalRidePolicy.supports(vehicle)
+                    && FriendlyAnimalData.get(rider.serverLevel()).isRegistered(vehicle);
+                if ((RideableTrustData.isPokemon(vehicle) || vehicle instanceof AbstractHorse || registeredAnimal)
                         && owner != null && !owner.equals(rider.getUUID())) rider.stopRiding();
             }
         }
@@ -229,6 +339,14 @@ public final class BackseatRiders {
 
     private static int setTrustedDriving(ServerPlayer admin, boolean enabled) {
         RideablesSettingsData.get(admin.serverLevel()).setTrustedRidersCanDrive(enabled);
+        if (!enabled) {
+            for (ServerPlayer rider : admin.getServer().getPlayerList().getPlayers()) {
+                Entity mount = rider.getVehicle();
+                if (mount != null && FriendlyAnimalRidePolicy.supports(mount)
+                        && FriendlyAnimalData.get(rider.serverLevel()).isRegistered(mount)
+                        && !rider.getUUID().equals(RideableTrustData.ownerId(mount))) rider.stopRiding();
+            }
+        }
         admin.sendSystemMessage(Component.literal("Trusted-rider driving is " + (enabled ? "enabled." : "disabled.")));
         return 1;
     }
@@ -241,14 +359,29 @@ public final class BackseatRiders {
                         && !GroundRideEligibility.hasNativeRidingBehaviour(pokemon)) rider.stopRiding();
             }
         }
-        admin.sendSystemMessage(Component.literal("Behaviorless Pok�mon ground fallback is "
-            + (enabled ? "enabled." : "disabled; passengers on behaviorless Pok�mon were dismounted.")));
+        admin.sendSystemMessage(Component.literal("Behaviorless Pokémon ground fallback is "
+            + (enabled ? "enabled." : "disabled; passengers on behaviorless Pokémon were dismounted.")));
+        return 1;
+    }
+
+    private static int setFriendlyAnimals(ServerPlayer admin, boolean enabled) {
+        RideablesSettingsData.get(admin.serverLevel()).setFriendlyAnimalsEnabled(enabled);
+        if (!enabled) {
+            for (ServerPlayer rider : admin.getServer().getPlayerList().getPlayers()) {
+                Entity mount = rider.getVehicle();
+                if (FriendlyAnimalRidePolicy.supports(mount)
+                        && FriendlyAnimalData.get(rider.serverLevel()).isRegistered(mount)) rider.stopRiding();
+            }
+        }
+        admin.sendSystemMessage(Component.literal("Registered friendly-animal riding is " + (enabled
+            ? "enabled. Only operator-assigned animals can be mounted."
+            : "disabled; riders on registered animals were dismounted.")));
         return 1;
     }
 
     private static int setGroundFallbackSpeed(ServerPlayer admin, double speed) {
         RideablesSettingsData.get(admin.serverLevel()).setGroundFallbackSpeed(speed);
-        admin.sendSystemMessage(Component.literal("Behaviorless Pok�mon ground speed set to " + speed
+        admin.sendSystemMessage(Component.literal("Behaviorless Pokémon ground speed set to " + speed
             + " blocks per tick (allowed range 0.02-0.12)."));
         return 1;
     }
@@ -276,5 +409,4 @@ public final class BackseatRiders {
         return 1;
     }
 }
-
 

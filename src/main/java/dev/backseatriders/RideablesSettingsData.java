@@ -19,6 +19,7 @@ public final class RideablesSettingsData extends SavedData {
     private boolean trustedRidersCanBoard = true;
     private boolean trustedRidersCanDrive = true;
     private boolean groundFallbackEnabled = true;
+    private boolean friendlyAnimalsEnabled = false;
     private double groundFallbackSpeed = 0.06;
     private final Map<String, Map<Integer, Offset>> seatOffsets = new HashMap<>();
     private final Map<String, Integer> profileSeatCounts = new HashMap<>();
@@ -31,6 +32,7 @@ public final class RideablesSettingsData extends SavedData {
     public boolean trustedRidersCanBoard() { return trustedRidersCanBoard; }
     public boolean trustedRidersCanDrive() { return trustedRidersCanDrive; }
     public boolean groundFallbackEnabled() { return groundFallbackEnabled; }
+    public boolean friendlyAnimalsEnabled() { return friendlyAnimalsEnabled; }
     public double groundFallbackSpeed() { return groundFallbackSpeed; }
 
     public static String profileKey(String species, String form) {
@@ -144,6 +146,13 @@ public final class RideablesSettingsData extends SavedData {
         }
     }
 
+    public void setFriendlyAnimalsEnabled(boolean enabled) {
+        if (friendlyAnimalsEnabled != enabled) {
+            friendlyAnimalsEnabled = enabled;
+            setDirty();
+        }
+    }
+
     public void setGroundFallbackSpeed(double speed) {
         if (!Double.isFinite(speed)) throw new IllegalArgumentException("Ground fallback speed must be finite");
         double normalized = Math.max(0.02, Math.min(0.12, speed));
@@ -159,6 +168,7 @@ public final class RideablesSettingsData extends SavedData {
         data.trustedRidersCanBoard = !tag.contains("trustedCanBoard") || tag.getBoolean("trustedCanBoard");
         data.trustedRidersCanDrive = !tag.contains("trustedCanDrive") || tag.getBoolean("trustedCanDrive");
         data.groundFallbackEnabled = !tag.contains("groundFallbackEnabled") || tag.getBoolean("groundFallbackEnabled");
+        data.friendlyAnimalsEnabled = tag.getBoolean("friendlyAnimalsEnabled");
         if (tag.contains("groundFallbackSpeed")) {
             try { data.setGroundFallbackSpeed(tag.getDouble("groundFallbackSpeed")); }
             catch (IllegalArgumentException ignored) { /* Keep the conservative default. */ }
@@ -191,6 +201,7 @@ public final class RideablesSettingsData extends SavedData {
         tag.putBoolean("trustedCanBoard", trustedRidersCanBoard);
         tag.putBoolean("trustedCanDrive", trustedRidersCanDrive);
         tag.putBoolean("groundFallbackEnabled", groundFallbackEnabled);
+        tag.putBoolean("friendlyAnimalsEnabled", friendlyAnimalsEnabled);
         tag.putDouble("groundFallbackSpeed", groundFallbackSpeed);
         var profiles = new net.minecraft.nbt.ListTag();
         seatOffsets.forEach((profile, offsets) -> {
@@ -221,4 +232,3 @@ public final class RideablesSettingsData extends SavedData {
         return tag;
     }
 }
-

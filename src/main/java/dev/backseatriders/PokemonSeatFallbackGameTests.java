@@ -55,13 +55,13 @@ public final class PokemonSeatFallbackGameTests {
         PokemonEntity ownedBulbasaur = createPokemonEntity(helper, level, "bulbasaur");
         ownedBulbasaur.setOwnerUUID(simulatedOwner.getUUID());
         helper.assertTrue(simulatedOwner.level() == level,
-            "The fake owner must share the GameTest ServerLevel with its Pok�mon");
+            "The fake owner must share the GameTest ServerLevel with its Pokémon");
         helper.assertTrue(ownedBulbasaur.getSeats().size() >= 2,
-            "The owned behaviorless Pok�mon must expose two seats before mounting");
+            "The owned behaviorless Pokémon must expose two seats before mounting");
         helper.assertTrue(ownedBulbasaur.isRideableFor(simulatedOwner),
-            "An owned behaviorless Pok�mon should pass the safe ground fallback gate");
+            "An owned behaviorless Pokémon should pass the safe ground fallback gate");
         helper.assertTrue(simulatedOwner.startRiding(ownedBulbasaur, true),
-            "The owner could not board the behaviorless Pok�mon through vanilla mounting");
+            "The owner could not board the behaviorless Pokémon through vanilla mounting");
         ServerPlayer trustedDriver = createConnectedTestPlayer(helper, level);
         RideableTrustData trust = RideableTrustData.get(level);
         trust.trust(simulatedOwner.getUUID(), trustedDriver.getUUID());
@@ -86,9 +86,59 @@ public final class PokemonSeatFallbackGameTests {
         double startZ = ownedBulbasaur.getZ();
         ownedBulbasaur.travel(Vec3.ZERO);
         helper.assertTrue(ownedBulbasaur.getZ() > startZ,
-            "Ground fallback controller input did not move the owned Pok�mon forward");
+            "Ground fallback controller input did not move the owned Pokémon forward");
         simulatedOwner.zza = 0.0F;
         simulatedOwner.stopRiding();
+
+        var cow = EntityType.COW.create(level);
+        helper.assertTrue(cow != null, "Could not create test cow");
+        var sheep = EntityType.SHEEP.create(level);
+        var armadillo = EntityType.ARMADILLO.create(level);
+        helper.assertTrue(sheep != null && armadillo != null
+                && FriendlyAnimalRidePolicy.supports(sheep)
+                && FriendlyAnimalRidePolicy.supports(armadillo),
+            "Sheep and armadillos must be included in the opt-in friendly-animal adapter");
+        cow.setPos(40.0, 5.0, 40.0);
+        helper.assertTrue(level.addFreshEntity(cow), "Could not add test cow");
+        FriendlyAnimalData animalOwners = FriendlyAnimalData.get(level);
+        animalOwners.assign(cow.getUUID(), simulatedOwner.getUUID());
+        settings.setFriendlyAnimalsEnabled(false);
+        helper.assertTrue(!FriendlyAnimalMountAttempt.startRiding(cow, simulatedOwner),
+            "Registered friendly animals must remain unrideable when their server setting is disabled");
+        settings.setFriendlyAnimalsEnabled(true);
+        helper.assertTrue(!simulatedOwner.startRiding(cow, true),
+            "Other code must not bypass the authorized non-canceled interaction path");
+        helper.assertTrue(FriendlyAnimalMountAttempt.startRiding(cow, simulatedOwner),
+            "The explicitly assigned owner could not mount an enabled adult cow");
+        trust.trust(simulatedOwner.getUUID(), trustedDriver.getUUID());
+        helper.assertTrue(FriendlyAnimalMountAttempt.startRiding(cow, trustedDriver),
+            "An explicitly trusted rider could not take the second animal seat");
+        helper.assertTrue(cow.getPassengers().size() == 2,
+            "Registered friendly animals must stop at two passengers");
+        FriendlyAnimalData loadedAnimalOwners = FriendlyAnimalData.load(animalOwners.save(new CompoundTag(), null), null);
+        helper.assertTrue(simulatedOwner.getUUID().equals(loadedAnimalOwners.owner(cow.getUUID())),
+            "Operator-assigned animal ownership did not survive SavedData serialization");
+        simulatedOwner.stopRiding();
+        trustedDriver.zza = 1.0F;
+        cow.setYRot(0.0F);
+        cow.setOnGround(true);
+        double cowStartZ = cow.getZ();
+        cow.travel(Vec3.ZERO);
+        helper.assertTrue(cow.getZ() > cowStartZ,
+            "The registered animal ground controller did not move the mount forward");
+        trustedDriver.zza = 0.0F;
+        trust.revoke(simulatedOwner.getUUID(), trustedDriver.getUUID());
+        cow.travel(Vec3.ZERO);
+        helper.assertTrue(!cow.getPassengers().contains(trustedDriver),
+            "A revoked trusted animal rider must be dismounted before driving continues");
+        UUID replacementOwner = UUID.randomUUID();
+        animalOwners.assign(cow.getUUID(), replacementOwner);
+        helper.assertTrue(replacementOwner.equals(animalOwners.owner(cow.getUUID())),
+            "An operator transfer must replace the explicitly assigned owner UUID");
+        animalOwners.remove(cow.getUUID());
+        helper.assertTrue(animalOwners.owner(cow.getUUID()) == null,
+            "Unregistering an animal must remove its owner assignment");
+        settings.setFriendlyAnimalsEnabled(false);
 
         Seat fallback = charizard.getSeats().stream()
             .filter(seat -> SeatFallbackPosition.slot(seat) != null)
@@ -133,10 +183,15 @@ public final class PokemonSeatFallbackGameTests {
         helper.assertTrue(loadedSettings.groundFallbackEnabled()
                 && Math.abs(loadedSettings.groundFallbackSpeed() - 0.08) < 1.0E-6,
             "Ground fallback settings did not survive SavedData serialization");
+        settings.setFriendlyAnimalsEnabled(true);
+        loadedSettings = RideablesSettingsData.load(settings.save(new CompoundTag(), null), null);
+        helper.assertTrue(loadedSettings.friendlyAnimalsEnabled(),
+            "The opt-in friendly-animal setting did not survive SavedData serialization");
+        settings.setFriendlyAnimalsEnabled(false);
         charizard.positionRider(passenger);
         Vec3 profiled = passenger.position();
         helper.assertTrue(profiled.distanceToSqr(new Vec3(11.25, 21.25, -7.5)) < 1.0E-6,
-            "Per-form generated-seat offset did not rotate with the Pok�mon yaw");
+            "Per-form generated-seat offset did not rotate with the Pokémon yaw");
         settings.clearSeatOffset(RideablesSettingsData.profileKey(charizard),
             SeatFallbackPosition.slot(fallback).index());
         helper.assertTrue(dewgong.getSeats().size() == 2,
@@ -205,4 +260,3 @@ public final class PokemonSeatFallbackGameTests {
         return player;
     }
 }
-

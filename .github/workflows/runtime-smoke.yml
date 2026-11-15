@@ -77,6 +77,8 @@ jobs:
           cat game-test.log
           grep -Ei 'fallback|GameTestServer|tests? passed|Done' game-test.log
           grep -q 'PokemonSeatFallbackServerMixin' game-test.log
+          grep -q 'FriendlyAnimalRidingMixin' game-test.log
+          grep -q 'FriendlyAnimalMovementMixin' game-test.log
           grep -q '1 tests are now running' game-test.log
           grep -q 'All 1 required tests passed' game-test.log
       - name: Start isolated client under Xvfb
@@ -105,4 +107,3 @@ jobs:
             game-test.log
             client-smoke.log
           if-no-files-found: ignore
-

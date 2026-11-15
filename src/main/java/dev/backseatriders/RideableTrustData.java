@@ -49,6 +49,9 @@ public final class RideableTrustData extends SavedData {
 
     public static UUID ownerId(Entity entity) {
         if (entity == null) return null;
+        if (FriendlyAnimalRidePolicy.supports(entity) && entity.level() instanceof ServerLevel level) {
+            return FriendlyAnimalData.get(level).owner(entity);
+        }
         try {
             Object value = entity.getClass().getMethod("getOwnerUUID").invoke(entity);
             return value instanceof UUID id ? id : null;
@@ -103,5 +106,4 @@ public final class RideableTrustData extends SavedData {
         return tag;
     }
 }
-
 
