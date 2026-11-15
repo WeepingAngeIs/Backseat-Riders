@@ -2,7 +2,6 @@ package dev.backseatriders;
 
 import static org.junit.jupiter.api.Assertions.assertSame;
 import static org.junit.jupiter.api.Assertions.assertEquals;
-import com.cobblemon.mod.common.api.riding.Seat;
 import java.util.List;
 import org.junit.jupiter.api.Test;
 
@@ -35,24 +34,24 @@ class SeatFallbackPositionTest {
     }
 
     @Test
-    void reusesSeatIdentityAcrossFreshNativeSeatLists() {
-        Seat nativeSeat = new Seat("native_seat", null, List.of(), false);
-        List<Seat> firstCall = SeatFallbackPosition.appendFallbackIfNeeded(List.of(nativeSeat));
-        List<Seat> secondCall = SeatFallbackPosition.appendFallbackIfNeeded(List.of(nativeSeat));
+    void reusesPassedFallbackIdentityAcrossFreshNativeSeatLists() {
+        Object nativeSeat = new Object();
+        Object stableFallbackSeat = new Object();
+        List<Object> firstCall = SeatFallbackLists.appendIfSingle(List.of(nativeSeat), stableFallbackSeat);
+        List<Object> secondCall = SeatFallbackLists.appendIfSingle(List.of(nativeSeat), stableFallbackSeat);
 
         assertSame(nativeSeat, firstCall.get(0));
-        assertSame(SeatFallbackPosition.BODY_FALLBACK_SEAT, firstCall.get(1));
-        assertSame(SeatFallbackPosition.BODY_FALLBACK_SEAT, secondCall.get(1));
+        assertSame(stableFallbackSeat, firstCall.get(1));
+        assertSame(stableFallbackSeat, secondCall.get(1));
         assertEquals(2, firstCall.size());
         assertEquals(2, secondCall.size());
     }
 
     @Test
     void leavesZeroAndMultiSeatListsUntouched() {
-        List<Seat> empty = List.of();
-        List<Seat> pair = List.of(new Seat("seat_1", null, List.of(), false),
-            new Seat("seat_2", null, List.of(), false));
-        assertSame(empty, SeatFallbackPosition.appendFallbackIfNeeded(empty));
-        assertSame(pair, SeatFallbackPosition.appendFallbackIfNeeded(pair));
+        List<Object> empty = List.of();
+        List<Object> pair = List.of(new Object(), new Object());
+        assertSame(empty, SeatFallbackLists.appendIfSingle(empty, new Object()));
+        assertSame(pair, SeatFallbackLists.appendIfSingle(pair, new Object()));
     }
 }
