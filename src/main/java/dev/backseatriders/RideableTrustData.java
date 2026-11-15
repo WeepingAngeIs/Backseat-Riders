@@ -1,6 +1,5 @@
 package dev.backseatriders;
 
-import java.lang.reflect.Method;
 import java.util.*;
 import net.minecraft.core.HolderLookup;
 import net.minecraft.nbt.CompoundTag;
@@ -23,6 +22,7 @@ public final class RideableTrustData extends SavedData {
     }
 
     public static boolean isPokemon(Entity entity) {
+        if (entity == null) return false;
         return entity.getClass().getName().equals("com.cobblemon.mod.common.entity.pokemon.PokemonEntity");
     }
 
@@ -38,10 +38,17 @@ public final class RideableTrustData extends SavedData {
 
     public static boolean isTrustedOwner(UUID ownerId, Player rider) {
         if (!(rider instanceof ServerPlayer serverRider)) return false;
+        if (!RideablesSettingsData.get(serverRider.serverLevel()).trustedRidersCanBoard()) return false;
         return TrustPolicy.permits(ownerId, rider.getUUID(), get(serverRider.serverLevel()).trusted(ownerId));
     }
 
+    public static boolean isTrustedDriver(Entity pokemon, ServerPlayer rider) {
+        RideablesSettingsData settings = RideablesSettingsData.get(rider.serverLevel());
+        return settings.trustedRidersCanDrive() && isTrusted(pokemon, rider);
+    }
+
     public static UUID ownerId(Entity entity) {
+        if (entity == null) return null;
         try {
             Object value = entity.getClass().getMethod("getOwnerUUID").invoke(entity);
             return value instanceof UUID id ? id : null;
@@ -96,4 +103,5 @@ public final class RideableTrustData extends SavedData {
         return tag;
     }
 }
+
 
