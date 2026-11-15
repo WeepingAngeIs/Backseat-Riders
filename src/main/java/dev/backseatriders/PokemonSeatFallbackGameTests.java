@@ -9,7 +9,7 @@ import java.util.Map;
 import net.minecraft.core.registries.BuiltInRegistries;
 import net.minecraft.gametest.framework.GameTest;
 import net.minecraft.gametest.framework.GameTestHelper;
-import net.neoforged.neoforge.gametest.GameTestHolder;
+import net.minecraft.gametest.framework.GameTestHolder;
 import net.minecraft.resources.ResourceLocation;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.world.entity.Entity;
@@ -17,10 +17,11 @@ import net.minecraft.world.entity.EntityType;
 import net.minecraft.world.phys.Vec3;
 
 @GameTestHolder("backseatriders")
+@PrefixGameTestTemplate(false)
 public final class PokemonSeatFallbackGameTests {
     private PokemonSeatFallbackGameTests() {}
 
-    @GameTest(template = "empty")
+    @GameTest(template = "empty", templateNamespace = "minecraft")
     public static void fallbackSeatsAndServerPosition(GameTestHelper helper) {
         ServerLevel level = helper.getLevel();
         PokemonEntity charizard = createPokemon(helper, level, "charizard", 2, true);
