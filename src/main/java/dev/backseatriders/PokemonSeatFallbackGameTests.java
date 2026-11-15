@@ -20,7 +20,7 @@ import net.minecraft.world.phys.Vec3;
 public final class PokemonSeatFallbackGameTests {
     private PokemonSeatFallbackGameTests() {}
 
-    @GameTest(template = "empty", templateNamespace = "minecraft")
+    @GameTest(template = "empty", templateNamespace = "backseatriders")
     public static void fallbackSeatsAndServerPosition(GameTestHelper helper) {
         ServerLevel level = helper.getLevel();
         PokemonEntity charizard = createPokemon(helper, level, "charizard", 2, true);
