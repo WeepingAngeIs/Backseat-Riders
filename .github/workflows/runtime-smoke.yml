@@ -30,7 +30,7 @@ jobs:
           sed 's#/#.#g; s#\.class$##' riding-classes.txt \
             | while read -r class_name; do javap -classpath "$cobblemon_jar" -p -c "$class_name"; done \
             > riding-api.log
-          grep -E 'positionRider|getSeatLocator|getPassengerOffsets|getSeats|Seat\(' riding-api.log
+          grep -E -A80 'positionRider\(|getSeatLocator\(|getPassengerOffsets\(|getSeats\(|Seat\(' riding-api.log
       - name: Add the installed KotlinForForge provider to the disposable run
         run: |
           mkdir -p smoke-run/mods
@@ -64,7 +64,9 @@ jobs:
             kill "$server_pid" 2>/dev/null || true
             exit 1
           fi
-          grep -E 'Done \(|backseatriders\.mixins\.json|PokemonRidingMixin|HorseBackseatMixin' server-smoke.log || true
+          grep -E 'Done \(|backseatriders\.mixins\.json|PokemonRidingMixin|HorseBackseatMixin' server-smoke.log
+          grep -q 'PokemonRidingMixin' server-smoke.log
+          grep -q 'HorseBackseatMixin' server-smoke.log
           kill "$server_pid" 2>/dev/null || true
           wait "$server_pid" || true
       - name: Preserve disposable server log
