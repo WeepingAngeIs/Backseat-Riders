@@ -15,15 +15,23 @@ public final class SeatFallbackPosition {
         return seat != null && Objects.equals(LOCATOR, seat.getLocator());
     }
 
-    public static void position(PokemonEntity pokemon, Entity passenger, Entity.MoveFunction updater) {
-        double width = pokemon.getBbWidth();
-        double height = pokemon.getBbHeight();
+    public static Position bodyRelativePosition(double x, double y, double z,
+                                                double width, double height, float yawDegrees) {
         double rearOffset = Math.max(0.2, Math.min(0.9, width * 0.3));
         double yOffset = Math.max(0.15, height * 0.72);
-        double yaw = Math.toRadians(pokemon.getYRot());
-        double x = pokemon.getX() + Math.sin(yaw) * rearOffset;
-        double y = pokemon.getY() + yOffset;
-        double z = pokemon.getZ() - Math.cos(yaw) * rearOffset;
-        updater.accept(passenger, x, y, z);
+        double yaw = Math.toRadians(yawDegrees);
+        return new Position(
+            x + Math.sin(yaw) * rearOffset,
+            y + yOffset,
+            z - Math.cos(yaw) * rearOffset
+        );
     }
+
+    public static void position(PokemonEntity pokemon, Entity passenger, Entity.MoveFunction updater) {
+        Position position = bodyRelativePosition(pokemon.getX(), pokemon.getY(), pokemon.getZ(),
+            pokemon.getBbWidth(), pokemon.getBbHeight(), pokemon.getYRot());
+        updater.accept(passenger, position.x(), position.y(), position.z());
+    }
+
+    public record Position(double x, double y, double z) {}
 }
