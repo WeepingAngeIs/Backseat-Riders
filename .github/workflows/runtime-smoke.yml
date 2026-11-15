@@ -81,8 +81,14 @@ jobs:
           grep -q 'PokemonSeatFallbackMixin' server-smoke.log
           grep -q 'HorseBackseatMixin' server-smoke.log
           grep -q 'Open Parties and Claims 0.33.0' server-smoke.log
+          for attempt in $(seq 1 30); do
+            if grep -q 'OPAC_SMOKE_OK' server-smoke.log; then break; fi
+            if ! kill -0 "$server_pid" 2>/dev/null; then cat server-smoke.log; exit 1; fi
+            sleep 1
+          done
           if ! grep -q 'OPAC_SMOKE_OK' server-smoke.log; then
             cat server-smoke.log
+            kill "$server_pid" 2>/dev/null || true
             exit 1
           fi
           kill "$server_pid" 2>/dev/null || true
