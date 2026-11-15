@@ -2,7 +2,6 @@ package dev.backseatriders;
 
 import com.cobblemon.mod.common.api.riding.Seat;
 import com.cobblemon.mod.common.entity.pokemon.PokemonEntity;
-import dev.backseatriders.mixin.PokemonSeatFallbackAccess;
 import java.util.List;
 import net.minecraft.world.entity.Entity;
 import net.minecraft.nbt.CompoundTag;

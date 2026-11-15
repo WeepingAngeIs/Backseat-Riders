@@ -1,4 +1,4 @@
-package dev.backseatriders.mixin;
+package dev.backseatriders;
 
 import net.minecraft.nbt.CompoundTag;
 

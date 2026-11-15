@@ -9,6 +9,7 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import net.minecraft.core.registries.BuiltInRegistries;
+import net.minecraft.nbt.CompoundTag;
 import net.minecraft.gametest.framework.GameTest;
 import net.minecraft.gametest.framework.GameTestHelper;
 import net.neoforged.neoforge.gametest.PrefixGameTestTemplate;
@@ -71,6 +72,12 @@ public final class PokemonSeatFallbackGameTests {
             "Server delegate did not apply the generated body-relative position");
         settings.setSeatOffset(RideablesSettingsData.profileKey(charizard),
             SeatFallbackPosition.slot(fallback).index(), 0.5, 1.25, -0.75);
+        RideablesSettingsData loadedSettings = RideablesSettingsData.load(
+            settings.save(new CompoundTag(), null), null);
+        helper.assertTrue(new RideablesSettingsData.Offset(0.5, 1.25, -0.75).equals(
+                loadedSettings.seatOffset(RideablesSettingsData.profileKey(charizard),
+                    SeatFallbackPosition.slot(fallback).index())),
+            "Per-form seat offsets did not survive SavedData serialization");
         charizard.positionRider(passenger);
         Vec3 profiled = passenger.position();
         helper.assertTrue(profiled.distanceToSqr(new Vec3(11.25, 21.25, -7.5)) < 1.0E-6,

@@ -7,6 +7,7 @@ import dev.backseatriders.RideablesSettingsData;
 import dev.backseatriders.SeatFallbackLists;
 import dev.backseatriders.SeatFallbackPolicy;
 import dev.backseatriders.SeatFallbackPosition;
+import dev.backseatriders.PokemonSeatFallbackAccess;
 import java.util.List;
 import net.minecraft.network.syncher.EntityDataAccessor;
 import net.minecraft.network.syncher.EntityDataSerializers;
