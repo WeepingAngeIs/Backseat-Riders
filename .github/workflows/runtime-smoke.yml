@@ -31,7 +31,11 @@ jobs:
             com.cobblemon.mod.common.client.render.models.blockbench.LocatorAccess \
             com.cobblemon.mod.common.client.render.models.blockbench.LocatorBone \
             com.cobblemon.mod.common.client.render.models.blockbench.pokemon.PokemonPosableModel \
-            com.cobblemon.mod.common.client.render.models.blockbench.pokemon.PosablePokemonEntityModel; do
+            com.cobblemon.mod.common.client.render.models.blockbench.pokemon.PosablePokemonEntityModel \
+            com.cobblemon.mod.common.client.render.models.blockbench.PosableState \
+            com.cobblemon.mod.common.pokemon.Species \
+            com.cobblemon.mod.common.pokemon.Pokemon \
+            com.cobblemon.mod.common.pokemon.Form; do
             echo "--- $class ---"
             javap -classpath "$cobblemon_jar" -p "$class"
           done
@@ -56,7 +60,6 @@ jobs:
           opac_url=$(printf '%s' "$opac_json" | jq -r '.files[] | select(.primary == true) | .url' | head -n 1)
           test -n "$opac_url"
           curl -fsSL "$opac_url" -o smoke-run/mods/open-parties-and-claims-neoforge-1.21.1-0.33.0.jar
-          cp smoke-run/mods/open-parties-and-claims-neoforge-1.21.1-0.33.0.jar smoke-gametest/mods/
           cp smoke-run/mods/open-parties-and-claims-neoforge-1.21.1-0.33.0.jar smoke-client/mods/
       - name: Start disposable NeoForge server with Cobblemon 1.8.4
         env:
@@ -80,6 +83,7 @@ jobs:
           grep -q 'PokemonRidingMixin' server-smoke.log
           grep -q 'PokemonSeatFallbackMixin' server-smoke.log
           grep -q 'HorseBackseatMixin' server-smoke.log
+          grep -q 'Open Parties and Claims 0.33.0' server-smoke.log
           kill "$server_pid" 2>/dev/null || true
           wait "$server_pid" || true
       - name: Run server-side Cobblemon GameTest integration
@@ -125,3 +129,4 @@ jobs:
             game-test.log
             client-smoke.log
           if-no-files-found: ignore
+

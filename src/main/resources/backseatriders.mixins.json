@@ -13,5 +13,9 @@
   "server": [
     "PokemonSeatFallbackServerMixin"
   ],
+  "client": [
+    "PokemonSeatFallbackClientMixin"
+  ],
   "injectors": { "defaultRequire": 1 }
 }
+

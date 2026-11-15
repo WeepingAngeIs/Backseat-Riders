@@ -3,6 +3,9 @@ package dev.backseatriders;
 import com.cobblemon.mod.common.api.riding.Seat;
 import com.cobblemon.mod.common.entity.pokemon.PokemonEntity;
 import java.util.List;
+import java.lang.ref.WeakReference;
+import java.util.Collections;
+import java.util.HashMap;
 import net.minecraft.world.entity.Entity;
 import net.minecraft.nbt.CompoundTag;
 import net.minecraft.server.level.ServerLevel;
@@ -11,6 +14,9 @@ import net.minecraft.server.level.ServerLevel;
 public final class SeatFallbackPosition {
     private static final String LOCATOR_PREFIX = "backseatriders:body_fallback_";
     public static final int MAX_SEATS = 16;
+    private static final Map<SeatKey, WeakReference<Seat>> LOCATOR_SEATS = new HashMap<>();
+    private static final Map<Seat, FallbackSlot> GENERATED_SEAT_SLOTS =
+        Collections.synchronizedMap(new java.util.WeakHashMap<>());
     /** Delay Cobblemon class initialization until a fallback Seat is actually requested. */
     private static final class SeatPool {
         private static final Seat[][] SEATS = createSeatPool();
@@ -28,11 +34,28 @@ public final class SeatFallbackPosition {
         return seats;
     }
 
-    public static Seat seat(int nativeSeatCount, int index) {
+    public static synchronized Seat seat(int nativeSeatCount, int index) {
+        return seat(nativeSeatCount, index, null);
+    }
+
+    public static synchronized Seat seat(int nativeSeatCount, int index, String modelLocator) {
         if (nativeSeatCount < 0 || nativeSeatCount > MAX_SEATS || index < 0 || index >= MAX_SEATS) {
             throw new IllegalArgumentException("Fallback seat index is outside the supported range");
         }
-        return SeatPool.SEATS[nativeSeatCount][index];
+        if (modelLocator == null || modelLocator.isBlank()) {
+            Seat seat = SeatPool.SEATS[nativeSeatCount][index];
+            GENERATED_SEAT_SLOTS.put(seat, new FallbackSlot(nativeSeatCount, index));
+            return seat;
+        }
+        SeatKey key = new SeatKey(nativeSeatCount, index, modelLocator);
+        WeakReference<Seat> ref = LOCATOR_SEATS.get(key);
+        Seat seat = ref == null ? null : ref.get();
+        if (seat == null) {
+            seat = new Seat(modelLocator, null, List.of(), false);
+            LOCATOR_SEATS.put(key, new WeakReference<>(seat));
+        }
+        GENERATED_SEAT_SLOTS.put(seat, new FallbackSlot(nativeSeatCount, index));
+        return seat;
     }
 
     private static String locator(int nativeCount, int index) {
@@ -40,20 +63,10 @@ public final class SeatFallbackPosition {
     }
 
     public static FallbackSlot slot(Seat seat) {
-        if (seat == null || seat.getLocator() == null || !seat.getLocator().startsWith(LOCATOR_PREFIX)) return null;
-        String[] parts = seat.getLocator().substring(LOCATOR_PREFIX.length()).split("_");
-        if (parts.length != 2) return null;
-        try {
-            int nativeCount = Integer.parseInt(parts[0]);
-            int index = Integer.parseInt(parts[1]);
-            if (nativeCount < 0 || nativeCount > MAX_SEATS || index < 0 || index >= MAX_SEATS) return null;
-            return new FallbackSlot(nativeCount, index);
-        } catch (NumberFormatException ignored) {
-            return null;
-        }
+        return seat == null ? null : GENERATED_SEAT_SLOTS.get(seat);
     }
 
-    public static boolean isBodyFallback(PokemonEntity pokemon, Entity passenger) {
+    public static boolean isGeneratedSeat(PokemonEntity pokemon, Entity passenger) {
         return slot(pokemon.getSeatForPassenger(passenger)) != null;
     }
 
@@ -82,7 +95,25 @@ public final class SeatFallbackPosition {
     public static void position(PokemonEntity pokemon, Entity passenger, Entity.MoveFunction updater) {
         FallbackSlot slot = slot(pokemon.getSeatForPassenger(passenger));
         if (slot == null) return;
-        Position custom = null;
+        Position custom = configuredOffset(pokemon, slot);
+        Position position = custom == null
+            ? bodyRelativePosition(pokemon.getX(), pokemon.getY(), pokemon.getZ(),
+                pokemon.getBbWidth(), pokemon.getBbHeight(), pokemon.getYRot(), slot.nativeSeatCount(), slot.index())
+            : localToWorld(pokemon.getX(), pokemon.getY(), pokemon.getZ(), pokemon.getYRot(), custom);
+        updater.accept(passenger, position.x(), position.y(), position.z());
+    }
+
+    public static void applyLocatorOffset(PokemonEntity pokemon, Entity passenger, Entity.MoveFunction updater) {
+        FallbackSlot slot = slot(pokemon.getSeatForPassenger(passenger));
+        if (slot == null) return;
+        Position offset = configuredOffset(pokemon, slot);
+        if (offset == null) return;
+        Position worldOffset = localToWorld(0.0, 0.0, 0.0, pokemon.getYRot(), offset);
+        updater.accept(passenger, passenger.getX() + worldOffset.x(), passenger.getY() + worldOffset.y(),
+            passenger.getZ() + worldOffset.z());
+    }
+
+    private static Position configuredOffset(PokemonEntity pokemon, FallbackSlot slot) {
         PokemonSeatFallbackAccess access = (PokemonSeatFallbackAccess) pokemon;
         if (pokemon.level() instanceof ServerLevel serverLevel) {
             RideablesSettingsData settings = RideablesSettingsData.get(serverLevel);
@@ -96,22 +127,16 @@ public final class SeatFallbackPosition {
                 value.putDouble("y", offset.y());
                 value.putDouble("z", offset.z());
                 synchronizedOffsets.put(Integer.toString(index), value);
-                if (index == slot.index()) custom = new Position(offset.x(), offset.y(), offset.z());
             }
             access.backseatriders$setSeatOffsets(synchronizedOffsets);
-        } else {
-            CompoundTag synchronizedOffsets = access.backseatriders$getSeatOffsets();
-            String key = Integer.toString(slot.index());
-            if (synchronizedOffsets.contains(key)) {
-                CompoundTag offset = synchronizedOffsets.getCompound(key);
-                custom = new Position(offset.getDouble("x"), offset.getDouble("y"), offset.getDouble("z"));
-            }
+            RideablesSettingsData.Offset offset = settings.seatOffset(profile, slot.index());
+            return offset == null ? null : new Position(offset.x(), offset.y(), offset.z());
         }
-        Position position = custom == null
-            ? bodyRelativePosition(pokemon.getX(), pokemon.getY(), pokemon.getZ(),
-                pokemon.getBbWidth(), pokemon.getBbHeight(), pokemon.getYRot(), slot.nativeSeatCount(), slot.index())
-            : localToWorld(pokemon.getX(), pokemon.getY(), pokemon.getZ(), pokemon.getYRot(), custom);
-        updater.accept(passenger, position.x(), position.y(), position.z());
+        CompoundTag synchronizedOffsets = access.backseatriders$getSeatOffsets();
+        String key = Integer.toString(slot.index());
+        if (!synchronizedOffsets.contains(key)) return null;
+        CompoundTag offset = synchronizedOffsets.getCompound(key);
+        return new Position(offset.getDouble("x"), offset.getDouble("y"), offset.getDouble("z"));
     }
 
     private static Position localToWorld(double x, double y, double z, float yawDegrees, Position local) {
@@ -122,5 +147,6 @@ public final class SeatFallbackPosition {
 
     public record FallbackSlot(int nativeSeatCount, int index) {}
     public record Position(double x, double y, double z) {}
+    private record SeatKey(int nativeSeatCount, int index, String locator) {}
 }
 

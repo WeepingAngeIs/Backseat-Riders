@@ -4,6 +4,7 @@ import dev.backseatriders.SeatEditorPayloads;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.GuiGraphics;
 import net.minecraft.client.gui.components.Button;
+import net.minecraft.client.gui.components.EditBox;
 import net.minecraft.client.gui.screens.Screen;
 import net.minecraft.nbt.CompoundTag;
 import net.minecraft.network.chat.Component;
@@ -17,10 +18,13 @@ public final class SeatEditorScreen extends Screen {
     private final String profile;
     private final Screen previous;
     private final Map<Integer, Offset> offsets = new HashMap<>();
+    private final Map<Integer, String> locators = new HashMap<>();
     private int count;
     private int selectedSeat;
     private int left;
     private int top;
+    private EditBox locatorInput;
+    private String validationMessage = "";
 
     private SeatEditorScreen(SeatEditorPayloads.Open data, Screen previous) {
         super(Component.literal("Rideable Seat Editor"));
@@ -33,6 +37,15 @@ public final class SeatEditorScreen extends Screen {
             if (!tag.contains(key, net.minecraft.nbt.Tag.TAG_COMPOUND)) continue;
             CompoundTag row = tag.getCompound(key);
             offsets.put(index, new Offset(row.getDouble("x"), row.getDouble("y"), row.getDouble("z")));
+        }
+        CompoundTag locatorTag = data.locators();
+        for (String key : locatorTag.getAllKeys()) {
+            try {
+                int index = Integer.parseInt(key);
+                if (index >= 0 && index < 16 && locatorTag.contains(key, net.minecraft.nbt.Tag.TAG_STRING)) {
+                    locators.put(index, locatorTag.getString(key));
+                }
+            } catch (NumberFormatException ignored) { }
         }
     }
 
@@ -52,19 +65,24 @@ public final class SeatEditorScreen extends Screen {
         addRenderableWidget(Button.builder(Component.literal("+"), button -> {
             if (count < 16) count++;
         }).bounds(left + 142, top + 48, 32, 20).build());
-        addRenderableWidget(Button.builder(Component.literal("Prev"), button -> selectedSeat = (selectedSeat + count - 1) % count)
+        addRenderableWidget(Button.builder(Component.literal("Prev"), button -> selectSeat((selectedSeat + count - 1) % count))
             .bounds(left + 26, top + 77, 32, 20).build());
-        addRenderableWidget(Button.builder(Component.literal("Next"), button -> selectedSeat = (selectedSeat + 1) % count)
+        addRenderableWidget(Button.builder(Component.literal("Next"), button -> selectSeat((selectedSeat + 1) % count))
             .bounds(left + 142, top + 77, 32, 20).build());
 
         addAxisButtons("X", 110, OffsetAxis.X);
         addAxisButtons("Y", 138, OffsetAxis.Y);
         addAxisButtons("Z", 166, OffsetAxis.Z);
 
+        locatorInput = new EditBox(font, left + 26, top + 193, 180, 20, Component.literal("Model locator"));
+        locatorInput.setMaxLength(64);
+        locatorInput.setValue(locators.getOrDefault(selectedSeat, ""));
+        addRenderableWidget(locatorInput);
+
         addRenderableWidget(Button.builder(Component.literal("Save"), button -> saveAndClose())
-            .bounds(left + 26, top + 207, 88, 20).build());
+            .bounds(left + 26, top + 230, 88, 20).build());
         addRenderableWidget(Button.builder(Component.literal("Cancel"), button -> onClose())
-            .bounds(left + 122, top + 207, 88, 20).build());
+            .bounds(left + 122, top + 230, 88, 20).build());
     }
 
     private void addAxisButtons(String label, int y, OffsetAxis axis) {
@@ -83,6 +101,11 @@ public final class SeatEditorScreen extends Screen {
         });
     }
 
+    private void selectSeat(int seat) {
+        selectedSeat = seat;
+        if (locatorInput != null) locatorInput.setValue(locators.getOrDefault(selectedSeat, ""));
+    }
+
     private static double clamp(double value) { return Math.max(-4.0, Math.min(4.0, value)); }
 
     private Offset offsetFor(int seat) {
@@ -91,6 +114,13 @@ public final class SeatEditorScreen extends Screen {
     }
 
     private void saveAndClose() {
+        String locator = locatorInput == null ? "" : locatorInput.getValue().trim();
+        if (!locator.isEmpty() && !dev.backseatriders.SeatEditorPolicy.isValidLocator(locator)) {
+            validationMessage = "Invalid locator name";
+            return;
+        }
+        if (locator.isEmpty()) locators.remove(selectedSeat);
+        else locators.put(selectedSeat, locator);
         CompoundTag packed = new CompoundTag();
         offsets.forEach((index, offset) -> {
             CompoundTag row = new CompoundTag();
@@ -99,7 +129,9 @@ public final class SeatEditorScreen extends Screen {
             row.putDouble("z", offset.z);
             packed.put(Integer.toString(index), row);
         });
-        PacketDistributor.sendToServer(new SeatEditorPayloads.Save(profile, count, packed));
+        CompoundTag packedLocators = new CompoundTag();
+        locators.forEach((index, value) -> packedLocators.putString(Integer.toString(index), value));
+        PacketDistributor.sendToServer(new SeatEditorPayloads.Save(profile, count, packed, packedLocators));
         Minecraft.getInstance().setScreen(previous);
     }
 
@@ -123,7 +155,9 @@ public final class SeatEditorScreen extends Screen {
         graphics.drawString(font, String.format(java.util.Locale.ROOT, "Z %.1f", current.z), left + 88, top + 172, 0xFFFFFF);
 
         drawPreview(graphics);
-        graphics.drawCenteredString(font, "Top view | unset = automatic", left + 312, top + 196, 0xA8B8C8);
+        graphics.drawString(font, "Locator (blank = body fallback)", left + 26, top + 181, 0xA8B8C8);
+        if (!validationMessage.isEmpty()) graphics.drawString(font, validationMessage, left + 26, top + 217, 0xFFFF6666);
+        graphics.drawCenteredString(font, "Top view | generated-seat markers", left + 312, top + 196, 0xA8B8C8);
         graphics.drawCenteredString(font, "Native seat totals are preserved", left + 312, top + 209, 0xA8B8C8);
     }
 

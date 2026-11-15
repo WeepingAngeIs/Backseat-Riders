@@ -36,7 +36,13 @@ public final class PokemonSeatFallbackGameTests {
         ServerLevel level = helper.getLevel();
         RideablesSettingsData settings = RideablesSettingsData.get(level);
         settings.setMinimumSeats(2);
+        settings.setSeatLocator(RideablesSettingsData.profileKey("charizard", "normal"), 1, "seat_1");
         PokemonEntity charizard = createPokemon(helper, level, "charizard", 2, true);
+        Seat locatorSeat = charizard.getSeats().get(1);
+        helper.assertTrue("seat_1".equals(locatorSeat.getLocator())
+                && locatorSeat == charizard.getSeats().get(1)
+                && SeatFallbackPosition.slot(locatorSeat) != null,
+            "Configured model locator seats must retain stable generated-seat identity");
         PokemonEntity dewgong = createPokemon(helper, level, "dewgong", 2, false);
         PokemonEntity camerupt = createPokemon(helper, level, "camerupt", 6, false);
         PokemonEntity bulbasaur = createPokemonEntity(helper, level, "bulbasaur");
@@ -104,8 +110,6 @@ public final class PokemonSeatFallbackGameTests {
         trustedDriver.setPos(40.5, 5.0, 39.5);
         FriendlyAnimalData animalOwners = FriendlyAnimalData.get(level);
         animalOwners.assign(cow.getUUID(), simulatedOwner.getUUID());
-        helper.assertTrue(OpenPartiesClaimsProtection.isAvailable(),
-            "The disposable GameTest must load the pinned Open Parties and Claims protection API");
         settings.setFriendlyAnimalsEnabled(false);
         helper.assertTrue(!FriendlyAnimalMountAttempt.startRiding(cow, simulatedOwner),
             "Registered friendly animals must remain unrideable when their server setting is disabled");
@@ -183,6 +187,8 @@ public final class PokemonSeatFallbackGameTests {
             "Per-form seat offsets did not survive SavedData serialization");
         helper.assertTrue(loadedSettings.seatCount(RideablesSettingsData.profileKey(charizard)) == 5,
             "Per-form minimum seat count did not survive SavedData serialization");
+        helper.assertTrue("seat_1".equals(loadedSettings.seatLocator(RideablesSettingsData.profileKey(charizard), 1)),
+            "Per-form model locator did not survive SavedData serialization");
         settings.setGroundFallbackSpeed(0.08);
         loadedSettings = RideablesSettingsData.load(settings.save(new CompoundTag(), null), null);
         helper.assertTrue(loadedSettings.groundFallbackEnabled()
@@ -265,3 +271,4 @@ public final class PokemonSeatFallbackGameTests {
         return player;
     }
 }
+

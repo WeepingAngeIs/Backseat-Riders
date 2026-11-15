@@ -1,3 +1,6 @@
+Warning: truncated output (original token count: 7278)
+Total output lines: 471
+
 package dev.backseatriders;
 
 import java.util.UUID;
@@ -119,7 +122,25 @@ public final class BackseatRiders {
                                 .executes(ctx -> clearSeatOffset(ctx.getSource().getPlayerOrException(),
                                     StringArgumentType.getString(ctx, "species"),
                                     StringArgumentType.getString(ctx, "form"),
-                                    IntegerArgumentType.getInteger(ctx, "seat"))))))))));
+                                    IntegerArgumentType.getInteger(ctx, "seat"))))))
+                .then(Commands.literal("seat-locator")
+                    .then(Commands.argument("species", StringArgumentType.word())
+                        .then(Commands.argument("form", StringArgumentType.word())
+                            .then(Commands.argument("seat", IntegerArgumentType.integer(0, 15))
+                                .then(Commands.argument("locator", StringArgumentType.word())
+                                    .executes(ctx -> setSeatLocator(ctx.getSource().getPlayerOrException(),
+                                        StringArgumentType.getString(ctx, "species"),
+                                        StringArgumentType.getString(ctx, "form"),
+                                        IntegerArgumentType.getInteger(ctx, "seat"),
+                                        StringArgumentType.getString(ctx, "locator"))))))))
+                .then(Commands.literal("clear-seat-locator")
+                    .then(Commands.argument("species", StringArgumentType.word())
+                        .then(Commands.argument("form", StringArgumentType.word())
+                            .then(Commands.argument("seat", IntegerArgumentType.integer(0, 15))
+                                .executes(ctx -> clearSeatLocator(ctx.getSource().getPlayerOrException(),
+                                    StringArgumentType.getString(ctx, "species"),
+                                    StringArgumentType.getString(ctx, "form"),
+                                    IntegerArgumentType.getInteger(ctx, "seat")))))))))));
     }
 
     @SubscribeEvent(priority = EventPriority.LOWEST)
@@ -181,25 +202,7 @@ public final class BackseatRiders {
             }
         }
         String name = owner.getServer().getProfileCache().get(target)
-            .map(profile -> profile.getName()).orElse(target.toString());
-        owner.sendSystemMessage(Component.literal(changed
-            ? (allow ? "Trusted " : "Revoked ") + name + (allow ? " for your rideable party." : " from your rideable party.")
-            : (allow ? "That player is already trusted." : "That player was not trusted.")));
-        return changed ? 1 : 0;
-    }
-
-    private static UUID resolvePlayerId(ServerPlayer requester, String key) {
-        try {
-            return UUID.fromString(key);
-        } catch (IllegalArgumentException ignored) {
-            return requester.getServer().getProfileCache().get(key).map(profile -> profile.getId()).orElse(null);
-        }
-    }
-
-    private static int listTrusted(ServerPlayer owner) {
-        var names = RideableTrustData.get(owner.serverLevel()).trusted(owner.getUUID()).stream()
-            .map(id -> owner.getServer().getProfileCache().get(id).map(profile -> profile.getName()).orElse(id.toString())).toList();
-        owner.sendSystemMessage(Component.literal(names.isEmpty() ? "Your rideable party has no trusted riders." : "Trusted riders: " + String.join(", ", names)));
+            .map(profile -> profile.g…278 tokens truncated… names)));
         return names.size();
     }
 
@@ -403,10 +406,51 @@ public final class BackseatRiders {
         return changed ? 1 : 0;
     }
 
+    private static int setSeatLocator(ServerPlayer admin, String species, String form, int seat, String locator) {
+        if (!SeatEditorPolicy.isValidLocator(locator)) {
+            admin.sendSystemMessage(Component.literal("Invalid locator name. Use 1-64 letters, numbers, dots, dashes, underscores, or colons."));
+            return 0;
+        }
+        String profile = RideablesSettingsData.profileKey(species, form);
+        RideablesSettingsData settings = RideablesSettingsData.get(admin.serverLevel());
+        if (!locator.equals(settings.seatLocator(profile, seat)) && hasOccupiedProfile(admin, profile)) {
+            admin.sendSystemMessage(Component.literal("Locator changes are blocked while a Pok�mon in this profile has riders."));
+            return 0;
+        }
+        boolean changed = settings.setSeatLocator(profile, seat, locator);
+        admin.sendSystemMessage(Component.literal(changed ? "Generated seat locator saved for " + profile + "."
+            : "That generated seat already uses this locator."));
+        return changed ? 1 : 0;
+    }
+
+    private static int clearSeatLocator(ServerPlayer admin, String species, String form, int seat) {
+        String profile = RideablesSettingsData.profileKey(species, form);
+        RideablesSettingsData settings = RideablesSettingsData.get(admin.serverLevel());
+        if (settings.seatLocator(profile, seat) != null && hasOccupiedProfile(admin, profile)) {
+            admin.sendSystemMessage(Component.literal("Locator changes are blocked while a Pok�mon in this profile has riders."));
+            return 0;
+        }
+        boolean changed = settings.clearSeatLocator(profile, seat);
+        admin.sendSystemMessage(Component.literal(changed ? "Generated seat locator cleared for " + profile + "."
+            : "No generated seat locator was configured for that profile."));
+        return changed ? 1 : 0;
+    }
+
+    private static boolean hasOccupiedProfile(ServerPlayer admin, String profile) {
+        for (var level : admin.getServer().getAllLevels()) {
+            for (Entity entity : level.getAllEntities()) {
+                if (entity instanceof PokemonEntity pokemon && !pokemon.getPassengers().isEmpty()
+                        && profile.equals(RideablesSettingsData.profileKey(pokemon))) return true;
+            }
+        }
+        return false;
+    }
+
     private static int openSeatEditor(ServerPlayer admin, String species, String form) {
         String profile = RideablesSettingsData.profileKey(species, form);
         SeatEditorPayloads.openFor(admin, profile);
         return 1;
     }
 }
+
 

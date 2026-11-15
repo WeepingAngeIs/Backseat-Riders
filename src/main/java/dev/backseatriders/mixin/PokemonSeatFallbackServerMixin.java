@@ -15,8 +15,9 @@ public abstract class PokemonSeatFallbackServerMixin {
     private void backseatriders$positionServerBodyFallback(Entity passenger, Entity.MoveFunction updater,
                                                             CallbackInfo ci) {
         PokemonEntity pokemon = ((PokemonServerDelegate) (Object) this).getEntity();
-        if (SeatFallbackPosition.isBodyFallback(pokemon, passenger)) {
+        if (SeatFallbackPosition.isGeneratedSeat(pokemon, passenger)) {
             SeatFallbackPosition.position(pokemon, passenger, updater);
         }
     }
 }
+

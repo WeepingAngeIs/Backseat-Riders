@@ -8,6 +8,9 @@ import net.minecraft.network.codec.StreamCodec;
 import net.minecraft.network.protocol.common.custom.CustomPacketPayload;
 import net.minecraft.resources.ResourceLocation;
 import net.minecraft.server.level.ServerPlayer;
+import net.minecraft.server.level.ServerLevel;
+import net.minecraft.world.entity.Entity;
+import com.cobblemon.mod.common.entity.pokemon.PokemonEntity;
 import net.neoforged.api.distmarker.Dist;
 import net.neoforged.fml.loading.FMLEnvironment;
 import net.neoforged.neoforge.network.PacketDistributor;
@@ -18,24 +21,26 @@ import net.neoforged.neoforge.network.handling.IPayloadContext;
 public final class SeatEditorPayloads {
     private SeatEditorPayloads() {}
 
-    public record Open(String profile, int count, CompoundTag offsets) implements CustomPacketPayload {
+    public record Open(String profile, int count, CompoundTag offsets, CompoundTag locators) implements CustomPacketPayload {
         public static final Type<Open> TYPE = new Type<>(ResourceLocation.fromNamespaceAndPath(
             BackseatRiders.MOD_ID, "seat_editor_open"));
         public static final StreamCodec<ByteBuf, Open> CODEC = StreamCodec.composite(
             ByteBufCodecs.STRING_UTF8, Open::profile,
             ByteBufCodecs.VAR_INT, Open::count,
             ByteBufCodecs.COMPOUND_TAG, Open::offsets,
+            ByteBufCodecs.COMPOUND_TAG, Open::locators,
             Open::new);
         @Override public Type<? extends CustomPacketPayload> type() { return TYPE; }
     }
 
-    public record Save(String profile, int count, CompoundTag offsets) implements CustomPacketPayload {
+    public record Save(String profile, int count, CompoundTag offsets, CompoundTag locators) implements CustomPacketPayload {
         public static final Type<Save> TYPE = new Type<>(ResourceLocation.fromNamespaceAndPath(
             BackseatRiders.MOD_ID, "seat_editor_save"));
         public static final StreamCodec<ByteBuf, Save> CODEC = StreamCodec.composite(
             ByteBufCodecs.STRING_UTF8, Save::profile,
             ByteBufCodecs.VAR_INT, Save::count,
             ByteBufCodecs.COMPOUND_TAG, Save::offsets,
+            ByteBufCodecs.COMPOUND_TAG, Save::locators,
             Save::new);
         @Override public Type<? extends CustomPacketPayload> type() { return TYPE; }
     }
@@ -54,7 +59,7 @@ public final class SeatEditorPayloads {
         }
         RideablesSettingsData settings = RideablesSettingsData.get(admin.serverLevel());
         PacketDistributor.sendToPlayer(admin,
-            new Open(profile, settings.seatCount(profile), settings.seatOffsetsTag(profile)));
+            new Open(profile, settings.seatCount(profile), settings.seatOffsetsTag(profile), settings.seatLocatorsTag(profile)));
     }
 
     private static void handleOpen(Open payload, IPayloadContext context) {
@@ -78,20 +83,37 @@ public final class SeatEditorPayloads {
         }
         if (!SeatEditorPolicy.isValidProfile(payload.profile())
                 || !SeatEditorPolicy.isValidSeatCount(payload.count())
-                || !SeatEditorPolicy.isValidOffsets(payload.offsets())) {
+                || !SeatEditorPolicy.isValidOffsets(payload.offsets())
+                || !SeatEditorPolicy.isValidLocators(payload.locators())) {
             player.sendSystemMessage(Component.literal("Rejected invalid seat editor data."));
             return;
         }
         RideablesSettingsData settings = RideablesSettingsData.get(player.serverLevel());
+        if (!settings.seatLocatorsTag(payload.profile()).equals(payload.locators())
+                && hasOccupiedProfile(player, payload.profile())) {
+            player.sendSystemMessage(Component.literal("Locator changes are blocked while a Pok�mon in this profile has riders."));
+            return;
+        }
         try {
             settings.setSeatCount(payload.profile(), payload.count());
             settings.replaceSeatOffsets(payload.profile(), payload.offsets());
+            settings.replaceSeatLocators(payload.profile(), payload.locators());
         } catch (IllegalArgumentException invalid) {
             player.sendSystemMessage(Component.literal("Rejected invalid or non-finite seat offsets."));
             return;
         }
         player.sendSystemMessage(Component.literal("Seat profile saved: " + payload.profile()
             + " (minimum " + payload.count() + " seats)."));
+    }
+
+    private static boolean hasOccupiedProfile(ServerPlayer requester, String profile) {
+        for (ServerLevel level : requester.getServer().getAllLevels()) {
+            for (Entity entity : level.getAllEntities()) {
+                if (entity instanceof PokemonEntity pokemon && !pokemon.getPassengers().isEmpty()
+                        && profile.equals(RideablesSettingsData.profileKey(pokemon))) return true;
+            }
+        }
+        return false;
     }
 }
 

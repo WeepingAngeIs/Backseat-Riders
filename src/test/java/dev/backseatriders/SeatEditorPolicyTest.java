@@ -1,6 +1,7 @@
 package dev.backseatriders;
 
 import static org.junit.jupiter.api.Assertions.*;
+import java.util.Map;
 import org.junit.jupiter.api.Test;
 
 class SeatEditorPolicyTest {
@@ -25,6 +26,12 @@ class SeatEditorPolicyTest {
         assertTrue(SeatEditorPolicy.isValidOffset(4.0, -4.0, 0.25));
         assertFalse(SeatEditorPolicy.isValidOffset(Double.NaN, 0.0, 0.0));
         assertFalse(SeatEditorPolicy.isValidOffset(0.0, 4.01, 0.0));
+    }
+
+    @Test void validatesModelLocatorNamesAndIndexes() {
+        assertTrue(SeatEditorPolicy.isValidLocatorMap(Map.of("0", "seat_1", "1", "back:locator")));
+        assertFalse(SeatEditorPolicy.isValidLocatorMap(Map.of("1", "bad locator")));
+        assertFalse(SeatEditorPolicy.isValidLocatorMap(Map.of("16", "seat_2")));
     }
 }
 

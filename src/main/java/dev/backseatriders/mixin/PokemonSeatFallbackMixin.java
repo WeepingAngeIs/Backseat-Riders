@@ -29,6 +29,8 @@ public abstract class PokemonSeatFallbackMixin implements PokemonSeatFallbackAcc
         SynchedEntityData.defineId(PokemonEntity.class, EntityDataSerializers.INT);
     @Unique private static final EntityDataAccessor<CompoundTag> backseatriders$syncedSeatOffsets =
         SynchedEntityData.defineId(PokemonEntity.class, EntityDataSerializers.COMPOUND_TAG);
+    @Unique private static final EntityDataAccessor<CompoundTag> backseatriders$syncedSeatLocators =
+        SynchedEntityData.defineId(PokemonEntity.class, EntityDataSerializers.COMPOUND_TAG);
     @Unique private static final EntityDataAccessor<Boolean> backseatriders$syncedGroundFallback =
         SynchedEntityData.defineId(PokemonEntity.class, EntityDataSerializers.BOOLEAN);
     @Unique private static final EntityDataAccessor<Float> backseatriders$syncedGroundSpeed =
@@ -38,6 +40,7 @@ public abstract class PokemonSeatFallbackMixin implements PokemonSeatFallbackAcc
     private void backseatriders$defineSeatCount(SynchedEntityData.Builder builder, CallbackInfo ci) {
         builder.define(backseatriders$syncedSeatCount, 0);
         builder.define(backseatriders$syncedSeatOffsets, new CompoundTag());
+        builder.define(backseatriders$syncedSeatLocators, new CompoundTag());
         builder.define(backseatriders$syncedGroundFallback, false);
         builder.define(backseatriders$syncedGroundSpeed, 0.06F);
     }
@@ -52,6 +55,16 @@ public abstract class PokemonSeatFallbackMixin implements PokemonSeatFallbackAcc
     @Unique
     public void backseatriders$setSeatOffsets(CompoundTag offsets) {
         ((PokemonEntity) (Object) this).getEntityData().set(backseatriders$syncedSeatOffsets, offsets);
+    }
+
+    @Override @Unique
+    public CompoundTag backseatriders$getSeatLocators() {
+        return ((PokemonEntity) (Object) this).getEntityData().get(backseatriders$syncedSeatLocators);
+    }
+
+    @Override @Unique
+    public void backseatriders$setSeatLocators(CompoundTag locators) {
+        ((PokemonEntity) (Object) this).getEntityData().set(backseatriders$syncedSeatLocators, locators);
     }
 
     @Override @Unique
@@ -81,6 +94,8 @@ public abstract class PokemonSeatFallbackMixin implements PokemonSeatFallbackAcc
         if (nativeSeats == null) return;
 
         int targetCount;
+        String profile = null;
+        CompoundTag synchronizedLocators = new CompoundTag();
         if (pokemon.level() instanceof ServerLevel serverLevel) {
             RideablesSettingsData settings = RideablesSettingsData.get(serverLevel);
             boolean nativeBehavior = GroundRideEligibility.hasNativeRidingBehaviour(pokemon);
@@ -88,19 +103,27 @@ public abstract class PokemonSeatFallbackMixin implements PokemonSeatFallbackAcc
             pokemon.getEntityData().set(backseatriders$syncedGroundFallback, groundFallback);
             pokemon.getEntityData().set(backseatriders$syncedGroundSpeed, (float) settings.groundFallbackSpeed());
             boolean mayGenerateSeats = nativeBehavior || groundFallback;
-            String profile = RideablesSettingsData.profileKey(pokemon);
+            profile = RideablesSettingsData.profileKey(pokemon);
+            for (int index = nativeSeats.size(); index < MAX_SEATS; index++) {
+                String locator = settings.seatLocator(profile, index);
+                if (locator != null) synchronizedLocators.putString(Integer.toString(index), locator);
+            }
             targetCount = !mayGenerateSeats ? nativeSeats.size() : SeatFallbackPolicy.effectiveSeatCount(nativeSeats.size(),
                 backseatriders$hasNativeBehaviorWithoutSeatProfile(pokemon) || groundFallback,
                 settings.seatCount(profile),
                 pokemon.getOccupiedSeats().size(), backseatriders$highestOccupiedFallbackIndex(pokemon));
             pokemon.getEntityData().set(backseatriders$syncedSeatCount, targetCount);
+            pokemon.getEntityData().set(backseatriders$syncedSeatLocators, synchronizedLocators);
         } else {
             targetCount = Math.max(nativeSeats.size(), pokemon.getEntityData().get(backseatriders$syncedSeatCount));
+            synchronizedLocators = pokemon.getEntityData().get(backseatriders$syncedSeatLocators);
         }
         if (targetCount <= nativeSeats.size()) return;
         int nativeSeatCount = nativeSeats.size();
         cir.setReturnValue(SeatFallbackLists.ensureCount(nativeSeats, targetCount,
-            index -> SeatFallbackPosition.seat(nativeSeatCount, index)));
+            index -> SeatFallbackPosition.seat(nativeSeatCount, index,
+                synchronizedLocators.contains(Integer.toString(index))
+                    ? synchronizedLocators.getString(Integer.toString(index)) : null)));
     }
 
     @Unique
@@ -119,12 +142,5 @@ public abstract class PokemonSeatFallbackMixin implements PokemonSeatFallbackAcc
             .max().orElse(-1);
     }
 
-    @Inject(method = "positionRider", at = @At("TAIL"), remap = false)
-    private void backseatriders$positionClientBodyFallback(Entity passenger, Entity.MoveFunction updater, CallbackInfo ci) {
-        PokemonEntity pokemon = (PokemonEntity) (Object) this;
-        if (pokemon.level().isClientSide() && SeatFallbackPosition.isBodyFallback(pokemon, passenger)) {
-            SeatFallbackPosition.position(pokemon, passenger, updater);
-        }
-    }
 }
 

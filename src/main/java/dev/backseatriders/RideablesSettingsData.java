@@ -22,6 +22,7 @@ public final class RideablesSettingsData extends SavedData {
     private boolean friendlyAnimalsEnabled = false;
     private double groundFallbackSpeed = 0.06;
     private final Map<String, Map<Integer, Offset>> seatOffsets = new HashMap<>();
+    private final Map<String, Map<Integer, String>> seatLocators = new HashMap<>();
     private final Map<String, Integer> profileSeatCounts = new HashMap<>();
 
     public static RideablesSettingsData get(ServerLevel level) {
@@ -49,6 +50,48 @@ public final class RideablesSettingsData extends SavedData {
 
     public Offset seatOffset(String profile, int seatIndex) {
         return seatOffsets.getOrDefault(profile, Map.of()).get(seatIndex);
+    }
+
+    public String seatLocator(String profile, int seatIndex) {
+        return seatLocators.getOrDefault(profile, Map.of()).get(seatIndex);
+    }
+
+    public CompoundTag seatLocatorsTag(String profile) {
+        CompoundTag result = new CompoundTag();
+        seatLocators.getOrDefault(profile, Map.of()).forEach((index, locator) ->
+            result.putString(Integer.toString(index), locator));
+        return result;
+    }
+
+    public boolean setSeatLocator(String profile, int seatIndex, String locator) {
+        if (seatIndex < 0 || seatIndex >= 16) throw new IllegalArgumentException("Seat index must be 0-15");
+        if (locator == null || locator.isBlank()) return clearSeatLocator(profile, seatIndex);
+        if (!SeatEditorPolicy.isValidLocator(locator)) throw new IllegalArgumentException("Invalid locator name");
+        Map<Integer, String> locators = seatLocators.computeIfAbsent(profile, ignored -> new HashMap<>());
+        if (locator.equals(locators.get(seatIndex))) return false;
+        locators.put(seatIndex, locator);
+        setDirty();
+        return true;
+    }
+
+    public boolean clearSeatLocator(String profile, int seatIndex) {
+        Map<Integer, String> locators = seatLocators.get(profile);
+        if (locators == null || locators.remove(seatIndex) == null) return false;
+        if (locators.isEmpty()) seatLocators.remove(profile);
+        setDirty();
+        return true;
+    }
+
+    public boolean replaceSeatLocators(String profile, CompoundTag requested) {
+        if (!SeatEditorPolicy.isValidLocators(requested)) throw new IllegalArgumentException("Invalid locator map");
+        Map<Integer, String> replacement = new HashMap<>();
+        for (String key : requested.getAllKeys()) replacement.put(Integer.parseInt(key), requested.getString(key));
+        Map<Integer, String> previous = seatLocators.getOrDefault(profile, Map.of());
+        if (previous.equals(replacement)) return false;
+        if (replacement.isEmpty()) seatLocators.remove(profile);
+        else seatLocators.put(profile, replacement);
+        setDirty();
+        return true;
     }
 
     public int seatCount(String profile) {
@@ -191,6 +234,16 @@ public final class RideablesSettingsData extends SavedData {
                         new Offset(clampOffset(seat.getDouble("x")), clampOffset(seat.getDouble("y")), clampOffset(seat.getDouble("z"))));
                 } catch (IllegalArgumentException ignored) { /* Skip invalid values. */ }
             }
+            CompoundTag locators = row.getCompound("locators");
+            for (String key : locators.getAllKeys()) {
+                try {
+                    int index = Integer.parseInt(key);
+                    String locator = locators.getString(key);
+                    if (index >= 0 && index < 16 && SeatEditorPolicy.isValidLocator(locator)) {
+                        data.seatLocators.computeIfAbsent(profile, ignored -> new HashMap<>()).put(index, locator);
+                    }
+                } catch (NumberFormatException ignored) { /* Skip malformed locator indices. */ }
+            }
         }
         return data;
     }
@@ -218,6 +271,7 @@ public final class RideablesSettingsData extends SavedData {
                 seats.add(seat);
             });
             row.put("seats", seats);
+            row.put("locators", seatLocatorsTag(profile));
             profiles.add(row);
         });
         profileSeatCounts.forEach((profile, count) -> {
@@ -226,9 +280,19 @@ public final class RideablesSettingsData extends SavedData {
             row.putString("profile", profile);
             row.putInt("count", count);
             row.put("seats", new net.minecraft.nbt.ListTag());
+            row.put("locators", seatLocatorsTag(profile));
+            profiles.add(row);
+        });
+        seatLocators.forEach((profile, locators) -> {
+            if (seatOffsets.containsKey(profile) || profileSeatCounts.containsKey(profile)) return;
+            CompoundTag row = new CompoundTag();
+            row.putString("profile", profile);
+            row.put("seats", new net.minecraft.nbt.ListTag());
+            row.put("locators", seatLocatorsTag(profile));
             profiles.add(row);
         });
         tag.put("seatOffsets", profiles);
         return tag;
     }
 }
+
