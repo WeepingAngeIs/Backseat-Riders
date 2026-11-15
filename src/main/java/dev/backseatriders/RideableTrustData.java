@@ -41,11 +41,9 @@ public final class RideableTrustData extends SavedData {
         return TrustPolicy.permits(owner, rider.getUUID(), get(serverRider.serverLevel()).trusted(owner));
     }
 
-    public static boolean ownerOrTrusted(Player owner, Player rider) {
-        if (owner.equals(rider)) return true;
-        if (!(owner instanceof ServerPlayer serverOwner) || !(rider instanceof ServerPlayer serverRider)) return false;
-        UUID ownerId = owner.getUUID();
-        return RideAccessPolicy.ownerGate(ownerId, rider.getUUID(), get(serverOwner.serverLevel()).trusted(ownerId));
+    public static boolean isTrustedOwner(UUID ownerId, Player rider) {
+        if (!(rider instanceof ServerPlayer serverRider)) return false;
+        return TrustPolicy.permits(ownerId, rider.getUUID(), get(serverRider.serverLevel()).trusted(ownerId));
     }
 
     public static UUID ownerId(Entity entity) {

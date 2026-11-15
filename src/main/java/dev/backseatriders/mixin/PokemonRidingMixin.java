@@ -2,6 +2,7 @@ package dev.backseatriders.mixin;
 
 import dev.backseatriders.RideableTrustData;
 import java.util.List;
+import java.util.Objects;
 import java.util.Optional;
 import java.util.UUID;
 import com.cobblemon.mod.common.entity.pokemon.PokemonEntity;
@@ -17,11 +18,12 @@ import org.spongepowered.asm.mixin.Unique;
 import org.spongepowered.asm.mixin.injection.At;
 import org.spongepowered.asm.mixin.injection.Inject;
 import org.spongepowered.asm.mixin.injection.Redirect;
+import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
 import org.spongepowered.asm.mixin.injection.callback.CallbackInfoReturnable;
 
 @Mixin(targets = "com.cobblemon.mod.common.entity.pokemon.PokemonEntity", remap = false)
 public abstract class PokemonRidingMixin {
-    @Unique private static final ThreadLocal<Boolean> backseatriders$ownerOrTrusted = ThreadLocal.withInitial(() -> false);
+    @Unique private static final ThreadLocal<UUID> backseatriders$ownerUuid = new ThreadLocal<>();
     @Unique private static final EntityDataAccessor<Optional<UUID>> backseatriders$trustedDriver =
         SynchedEntityData.defineId(PokemonEntity.class, EntityDataSerializers.OPTIONAL_UUID);
 
@@ -30,23 +32,30 @@ public abstract class PokemonRidingMixin {
         builder.define(backseatriders$trustedDriver, Optional.empty());
     }
 
+    @Redirect(method = "isRideableFor$lambda$0", at = @At(value = "INVOKE",
+        target = "Lcom/cobblemon/mod/common/entity/pokemon/PokemonEntity;getOwner()Lnet/minecraft/world/entity/LivingEntity;",
+        ordinal = 1), remap = false)
+    private static LivingEntity backseatriders$captureOwnerUuid(PokemonEntity pokemon) {
+        backseatriders$ownerUuid.set(RideableTrustData.ownerId(pokemon));
+        return pokemon.getOwner();
+    }
+
     /** Change only Cobblemon's owner equality gate; the surrounding native guards still run. */
     @Redirect(method = "isRideableFor$lambda$0", at = @At(value = "INVOKE",
         target = "Lkotlin/jvm/internal/Intrinsics;areEqual(Ljava/lang/Object;Ljava/lang/Object;)Z"), remap = false)
     private static boolean backseatriders$authorizedOwnerComparison(Object owner, Object rider) {
-        boolean ownerOrTrusted = owner instanceof Player ownerPlayer && rider instanceof Player riderPlayer
-            && RideableTrustData.ownerOrTrusted(ownerPlayer, riderPlayer);
-        backseatriders$ownerOrTrusted.set(ownerOrTrusted);
-        return ownerOrTrusted;
+        UUID ownerId = backseatriders$ownerUuid.get();
+        backseatriders$ownerUuid.remove();
+        boolean ownerMatches = Objects.equals(owner, rider);
+        return ownerMatches || rider instanceof Player riderPlayer && ownerId != null
+            && RideableTrustData.isTrustedOwner(ownerId, riderPlayer);
     }
 
     /** Cobblemon normally permits any non-owner once a passenger is aboard; this project requires an explicit grant. */
     @Redirect(method = "isRideableFor$lambda$0", at = @At(value = "INVOKE",
         target = "Ljava/util/List;isEmpty()Z", ordinal = 1), remap = false)
     private static boolean backseatriders$untrustedPassengerGate(List<?> passengers) {
-        boolean ownerOrTrusted = backseatriders$ownerOrTrusted.get();
-        backseatriders$ownerOrTrusted.remove();
-        return dev.backseatriders.RideAccessPolicy.passengerGateReportsEmpty(ownerOrTrusted, passengers.isEmpty());
+        return dev.backseatriders.RideAccessPolicy.passengerGateReportsEmpty(false, passengers.isEmpty());
     }
 
     /** Keep the native selected driver when one exists; otherwise let a trusted onboard rider drive. */
