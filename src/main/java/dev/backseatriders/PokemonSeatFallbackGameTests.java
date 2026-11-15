@@ -33,7 +33,7 @@ public final class PokemonSeatFallbackGameTests {
         PokemonEntity bulbasaur = createPokemonEntity(helper, level, "bulbasaur");
         RidingProperties bulbasaurRiding = bulbasaur.getRideProp();
         boolean behaviorWithoutSeatProfile = bulbasaurRiding != null && bulbasaurRiding.getSeats().isEmpty()
-            && !bulbasaurRiding.getBehaviours().isEmpty();
+            && bulbasaurRiding.getBehaviours() != null && !bulbasaurRiding.getBehaviours().isEmpty();
         int expectedBulbasaurSeats = behaviorWithoutSeatProfile ? 2 : 0;
         helper.assertTrue(bulbasaur.getSeats().size() == expectedBulbasaurSeats,
             "Seatless profile must gain seats only when it has a native riding behavior");
