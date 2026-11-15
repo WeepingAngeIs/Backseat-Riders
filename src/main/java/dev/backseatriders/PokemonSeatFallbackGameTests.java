@@ -110,10 +110,7 @@ public final class PokemonSeatFallbackGameTests {
         trustedDriver.setPos(40.5, 5.0, 39.5);
         FriendlyAnimalData animalOwners = FriendlyAnimalData.get(level);
         animalOwners.assign(cow.getUUID(), simulatedOwner.getUUID());
-        if (Boolean.getBoolean("backseatriders.requireOpacSmoke")) {
-            helper.assertTrue(OpenPartiesClaimsProtection.isAvailable(),
-                "The server-side smoke must load Open Parties and Claims 0.33.0");
-        }
+        verifyOpacInteractions(helper, level, simulatedOwner, trustedDriver, cow);
         settings.setFriendlyAnimalsEnabled(false);
         helper.assertTrue(!FriendlyAnimalMountAttempt.startRiding(cow, simulatedOwner),
             "Registered friendly animals must remain unrideable when their server setting is disabled");
@@ -227,6 +224,67 @@ public final class PokemonSeatFallbackGameTests {
         settings.setGroundFallbackEnabled(true);
         settings.setGroundFallbackSpeed(0.06);
         helper.succeed();
+    }
+
+    private static void verifyOpacInteractions(GameTestHelper helper, ServerLevel level,
+                                               ServerPlayer owner, ServerPlayer trusted, Entity target) {
+        if (!Boolean.getBoolean("backseatriders.requireOpacSmoke")) return;
+        helper.assertTrue(OpenPartiesClaimsProtection.isAvailable(),
+            "The server-side smoke must load Open Parties and Claims 0.33.0");
+        try {
+            var dimension = level.dimension().location();
+            var chunk = target.chunkPosition();
+            ClassLoader loader = level.getServer().getClass().getClassLoader();
+            Class<?> apiClass = Class.forName("xaero.pac.common.server.api.OpenPACServerAPI", true, loader);
+            Object api = apiClass.getMethod("get", net.minecraft.server.MinecraftServer.class)
+                .invoke(null, level.getServer());
+            Object claimManager = apiClass.getMethod("getServerClaimsManager").invoke(api);
+            Method claimMethod = claimManager.getClass().getMethod("tryToClaim",
+                ResourceLocation.class, UUID.class, int.class, ResourceLocation.class,
+                int.class, int.class, int.class, int.class, boolean.class);
+            Object result = claimMethod.invoke(claimManager, dimension, owner.getUUID(), 0,
+                dimension, chunk.x, chunk.z, chunk.x, chunk.z, true);
+            String resultType = String.valueOf(result.getClass().getMethod("getResultType").invoke(result));
+            helper.assertTrue("SUCCESSFUL_CLAIM".equals(resultType),
+                "OPAC smoke could not create its disposable claim: " + resultType);
+            Object claim = result.getClass().getMethod("getClaimResult").invoke(result);
+
+            Object protection = apiClass.getMethod("getChunkProtection").invoke(api);
+            Class<?> claimApiClass = Class.forName(
+                "xaero.pac.common.claims.player.api.IPlayerChunkClaimAPI", true, loader);
+            Object claimConfig = protection.getClass().getMethod("getConfig", claimApiClass).invoke(protection, claim);
+
+            Object configManager = apiClass.getMethod("getPlayerConfigManager").invoke(api);
+            Object ownerConfig = configManager.getClass().getMethod("getLoadedConfig", UUID.class)
+                .invoke(configManager, owner.getUUID());
+            Object groupManager = ownerConfig.getClass().getMethod("getPlayerGroups").invoke(ownerConfig);
+            String groupId = "bsr-smoke-trusted";
+            Object addResult = groupManager.getClass().getMethod("addCustom", String.class)
+                .invoke(groupManager, groupId);
+            Object groupOptional = addResult.getClass().getMethod("left").invoke(addResult);
+            Object trustedGroup = ((java.util.Optional<?>) groupOptional).orElseThrow(
+                () -> new AssertionError("OPAC smoke could not create a temporary trusted-player group"));
+            trustedGroup.getClass().getMethod("includeMember", UUID.class, String.class)
+                .invoke(trustedGroup, trusted.getUUID(), null);
+
+            Class<?> optionsClass = Class.forName(
+                "xaero.pac.common.server.player.config.api.v2.PlayerConfigOptions", true, loader);
+            Object playerExceptionOption = optionsClass.getField("CLAIM_EXCEPTION_ENTITIES_BY_PLAYERS").get(null);
+            Class<?> optionClass = Class.forName(
+                "xaero.pac.common.server.player.config.api.v2.IPlayerConfigOptionSpecAPI", true, loader);
+            Method setOption = claimConfig.getClass().getMethod("tryToSet", optionClass, Object.class);
+            setOption.invoke(claimConfig, playerExceptionOption, groupId);
+
+            helper.assertTrue(!OpenPartiesClaimsProtection.deniesMount(owner, target, InteractionHand.MAIN_HAND),
+                "OPAC's actual entity protection API should allow the claim owner");
+            helper.assertTrue(!OpenPartiesClaimsProtection.deniesMount(trusted, target, InteractionHand.MAIN_HAND),
+                "OPAC's configured player-group exception should allow the trusted rider");
+            ServerPlayer stranger = createConnectedTestPlayer(helper, level);
+            helper.assertTrue(OpenPartiesClaimsProtection.deniesMount(stranger, target, InteractionHand.MAIN_HAND),
+                "OPAC's actual entity protection API should deny an unrelated player");
+        } catch (ReflectiveOperationException | RuntimeException failure) {
+            throw new AssertionError("OPAC 0.33.0 interaction API integration check failed", failure);
+        }
     }
 
     @SuppressWarnings("unchecked")
