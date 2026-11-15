@@ -2,13 +2,18 @@ package dev.backseatriders;
 
 import java.util.UUID;
 import net.minecraft.commands.Commands;
+import com.mojang.brigadier.arguments.StringArgumentType;
 import net.minecraft.network.chat.Component;
 import net.minecraft.server.level.ServerPlayer;
+import net.minecraft.world.InteractionHand;
+import net.minecraft.world.InteractionResult;
+import net.minecraft.world.entity.animal.horse.AbstractHorse;
 import net.minecraft.world.entity.Entity;
 import net.neoforged.bus.api.SubscribeEvent;
 import net.neoforged.fml.common.Mod;
 import net.neoforged.neoforge.common.NeoForge;
 import net.neoforged.neoforge.event.RegisterCommandsEvent;
+import net.neoforged.neoforge.event.entity.player.PlayerInteractEvent;
 import net.minecraft.commands.arguments.StringArgumentType;
 
 @Mod(BackseatRiders.MOD_ID)
@@ -25,6 +30,19 @@ public final class BackseatRiders {
             .then(Commands.literal("revoke").then(Commands.argument("player", StringArgumentType.word())
                 .executes(ctx -> changeTrust(ctx.getSource().getPlayerOrException(), StringArgumentType.getString(ctx, "player"), false))))
             .then(Commands.literal("list").executes(ctx -> listTrusted(ctx.getSource().getPlayerOrException()))));
+    }
+
+    @SubscribeEvent
+    public void onHorseBackseatInteract(PlayerInteractEvent.EntityInteract event) {
+        if (!(event.getEntity() instanceof ServerPlayer rider) || event.getHand() != InteractionHand.MAIN_HAND
+                || !(event.getTarget() instanceof AbstractHorse horse) || !horse.isTamed()
+                || horse.getPassengers().size() != 1 || !rider.getItemInHand(event.getHand()).isEmpty()) return;
+        var ownerId = horse.getOwnerUUID();
+        if (ownerId == null || !(ownerId.equals(rider.getUUID()) || RideableTrustData.isTrustedOwner(ownerId, rider))) return;
+        if (rider.startRiding(horse, true)) {
+            event.setCanceled(true);
+            event.setCancellationResult(InteractionResult.CONSUME);
+        }
     }
 
     private static int changeTrust(ServerPlayer owner, String playerKey, boolean allow) {
