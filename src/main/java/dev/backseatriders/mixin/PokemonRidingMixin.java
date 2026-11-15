@@ -1,6 +1,8 @@
 package dev.backseatriders.mixin;
 
 import dev.backseatriders.RideableTrustData;
+import dev.backseatriders.GroundRideEligibility;
+import dev.backseatriders.PokemonSeatFallbackAccess;
 import java.util.List;
 import java.util.Objects;
 import java.util.Optional;

@@ -4,6 +4,7 @@ import com.cobblemon.mod.common.api.riding.RidingProperties;
 import com.cobblemon.mod.common.api.riding.Seat;
 import com.cobblemon.mod.common.entity.pokemon.PokemonEntity;
 import dev.backseatriders.RideablesSettingsData;
+import dev.backseatriders.GroundRideEligibility;
 import dev.backseatriders.SeatFallbackLists;
 import dev.backseatriders.SeatFallbackPolicy;
 import dev.backseatriders.SeatFallbackPosition;
