@@ -3,6 +3,7 @@ package dev.backseatriders;
 import com.cobblemon.mod.common.api.riding.Seat;
 import com.cobblemon.mod.common.entity.pokemon.PokemonEntity;
 import java.util.List;
+import java.util.Map;
 import java.lang.ref.WeakReference;
 import java.util.Collections;
 import java.util.HashMap;
