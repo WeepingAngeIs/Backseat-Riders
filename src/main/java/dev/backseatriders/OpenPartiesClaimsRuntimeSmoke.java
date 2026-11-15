@@ -64,8 +64,11 @@ public final class OpenPartiesClaimsRuntimeSmoke {
 
     private static void exercise(MinecraftServer server) throws ReflectiveOperationException {
         ServerLevel level = server.overworld();
+        System.getLogger("BackseatRiders/OPAC").log(System.Logger.Level.INFO, "OPAC_SMOKE_CREATE_OWNER");
         ServerPlayer owner = fakePlayer(server, level, "BsrClaimOwner");
+        System.getLogger("BackseatRiders/OPAC").log(System.Logger.Level.INFO, "OPAC_SMOKE_CREATE_TRUSTED");
         ServerPlayer trusted = fakePlayer(server, level, "BsrClaimTrusted");
+        System.getLogger("BackseatRiders/OPAC").log(System.Logger.Level.INFO, "OPAC_SMOKE_CREATE_STRANGER");
         ServerPlayer stranger = fakePlayer(server, level, "BsrClaimStranger");
         System.getLogger("BackseatRiders/OPAC").log(System.Logger.Level.INFO, "OPAC_SMOKE_PLAYERS_CREATED");
         Entity animal = EntityType.COW.create(level);
