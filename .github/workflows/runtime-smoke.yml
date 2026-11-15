@@ -23,8 +23,10 @@ jobs:
           gradle --no-daemon -q dependencyInsight --dependency MdwFAVRL --configuration runtimeClasspath
           cobblemon_jar=$(find "$HOME/.gradle/caches/modules-2/files-2.1" -path '*/MdwFAVRL/xsVHrAsY/*.jar' -print -quit)
           test -n "$cobblemon_jar"
-          jar tf "$cobblemon_jar" | grep -E '/(Pokemon(Client|Server)Delegate|PokemonEntity|Seat)\.class$' \
-            | sed 's#/#.#g; s#\.class$##' \
+          echo "Inspecting $cobblemon_jar"
+          jar tf "$cobblemon_jar" | grep -iE 'Pokemon(Client|Server)Delegate|PokemonEntity\.class|/Seat\.class' > riding-classes.txt
+          cat riding-classes.txt
+          sed 's#/#.#g; s#\.class$##' riding-classes.txt \
             | while read -r class_name; do javap -classpath "$cobblemon_jar" -p -c "$class_name"; done \
             > riding-api.log
           grep -E 'positionRider|getSeatLocator|getPassengerOffsets|getSeats|Seat\(' riding-api.log
@@ -62,5 +64,6 @@ jobs:
           path: |
             server-smoke.log
             riding-api.log
+            riding-classes.txt
           if-no-files-found: ignore
 
