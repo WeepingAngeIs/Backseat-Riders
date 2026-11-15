@@ -25,7 +25,6 @@ neoForge {
             programArgument '--nogui'
         }
         gameTestServer {
-            gameTestServer()
             gameDirectory = project.file('smoke-gametest')
             programArgument '--nogui'
             setForceExit false
