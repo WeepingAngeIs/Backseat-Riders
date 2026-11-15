@@ -42,6 +42,7 @@ public final class BackseatRiders {
     }
 
     private void runRequestedGameTests(ServerStartedEvent event) {
+        OpenPartiesClaimsRuntimeSmoke.runIfRequested(event.getServer());
         if (!Boolean.getBoolean("backseatriders.runGameTests")) return;
         event.getServer().getCommands().performPrefixedCommand(
             event.getServer().createCommandSourceStack().withPermission(4), "test runall");
