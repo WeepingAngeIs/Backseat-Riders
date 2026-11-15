@@ -1,6 +1,3 @@
-Warning: truncated output (original token count: 7278)
-Total output lines: 471
-
 package dev.backseatriders;
 
 import java.util.UUID;
@@ -24,6 +21,7 @@ import net.neoforged.neoforge.event.RegisterGameTestsEvent;
 import net.neoforged.fml.common.Mod;
 import net.neoforged.neoforge.common.NeoForge;
 import net.neoforged.neoforge.event.RegisterCommandsEvent;
+import net.neoforged.neoforge.event.server.ServerStartedEvent;
 import net.neoforged.neoforge.event.entity.player.PlayerInteractEvent;
 
 @Mod(BackseatRiders.MOD_ID)
@@ -32,12 +30,19 @@ public final class BackseatRiders {
 
     public BackseatRiders(IEventBus modEventBus) {
         NeoForge.EVENT_BUS.register(this);
+        NeoForge.EVENT_BUS.addListener(this::runRequestedGameTests);
         modEventBus.addListener(this::registerGameTests);
         modEventBus.addListener(SeatEditorPayloads::register);
     }
 
     public void registerGameTests(RegisterGameTestsEvent event) {
         event.register(PokemonSeatFallbackGameTests.class);
+    }
+
+    private void runRequestedGameTests(ServerStartedEvent event) {
+        if (!Boolean.getBoolean("backseatriders.runGameTests")) return;
+        event.getServer().getCommands().performPrefixedCommand(
+            event.getServer().createCommandSourceStack().withPermission(4), "test runall");
     }
 
     @SubscribeEvent
@@ -202,7 +207,25 @@ public final class BackseatRiders {
             }
         }
         String name = owner.getServer().getProfileCache().get(target)
-            .map(profile -> profile.g…278 tokens truncated… names)));
+            .map(profile -> profile.getName()).orElse(target.toString());
+        owner.sendSystemMessage(Component.literal(changed
+            ? (allow ? "Trusted " : "Revoked ") + name + (allow ? " for your rideable party." : " from your rideable party.")
+            : (allow ? "That player is already trusted." : "That player was not trusted.")));
+        return changed ? 1 : 0;
+    }
+
+    private static UUID resolvePlayerId(ServerPlayer requester, String key) {
+        try {
+            return UUID.fromString(key);
+        } catch (IllegalArgumentException ignored) {
+            return requester.getServer().getProfileCache().get(key).map(profile -> profile.getId()).orElse(null);
+        }
+    }
+
+    private static int listTrusted(ServerPlayer owner) {
+        var names = RideableTrustData.get(owner.serverLevel()).trusted(owner.getUUID()).stream()
+            .map(id -> owner.getServer().getProfileCache().get(id).map(profile -> profile.getName()).orElse(id.toString())).toList();
+        owner.sendSystemMessage(Component.literal(names.isEmpty() ? "Your rideable party has no trusted riders." : "Trusted riders: " + String.join(", ", names)));
         return names.size();
     }
 

@@ -31,3 +31,4 @@ Animated model-bone/locator binding and model-rendered 3D preview are not implem
 ## Build and install
 
 GitHub Actions builds `build/libs/backseat-riders-0.1.0.jar`. Install it on the server and every client with matching Cobblemon 1.8.4. Compilation, server startup, and GameTests do not establish real-player multiplayer behavior.
+

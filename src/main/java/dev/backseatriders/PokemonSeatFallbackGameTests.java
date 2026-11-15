@@ -110,6 +110,10 @@ public final class PokemonSeatFallbackGameTests {
         trustedDriver.setPos(40.5, 5.0, 39.5);
         FriendlyAnimalData animalOwners = FriendlyAnimalData.get(level);
         animalOwners.assign(cow.getUUID(), simulatedOwner.getUUID());
+        if (Boolean.getBoolean("backseatriders.requireOpacSmoke")) {
+            helper.assertTrue(OpenPartiesClaimsProtection.isAvailable(),
+                "The server-side smoke must load Open Parties and Claims 0.33.0");
+        }
         settings.setFriendlyAnimalsEnabled(false);
         helper.assertTrue(!FriendlyAnimalMountAttempt.startRiding(cow, simulatedOwner),
             "Registered friendly animals must remain unrideable when their server setting is disabled");
