@@ -9,7 +9,10 @@ import net.minecraft.world.entity.Entity;
 public final class SeatFallbackPosition {
     private static final String LOCATOR_PREFIX = "backseatriders:body_fallback_";
     public static final int MAX_SEATS = 16;
-    private static final Seat[][] SEATS = createSeatPool();
+    /** Delay Cobblemon class initialization until a fallback Seat is actually requested. */
+    private static final class SeatPool {
+        private static final Seat[][] SEATS = createSeatPool();
+    }
 
     private SeatFallbackPosition() {}
 
@@ -27,7 +30,7 @@ public final class SeatFallbackPosition {
         if (nativeSeatCount < 0 || nativeSeatCount > MAX_SEATS || index < 0 || index >= MAX_SEATS) {
             throw new IllegalArgumentException("Fallback seat index is outside the supported range");
         }
-        return SEATS[nativeSeatCount][index];
+        return SeatPool.SEATS[nativeSeatCount][index];
     }
 
     private static String locator(int nativeCount, int index) {
