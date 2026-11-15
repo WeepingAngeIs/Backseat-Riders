@@ -39,7 +39,18 @@ jobs:
             com.cobblemon.mod.common.api.pokemon.PokemonSpecies; do
             javap -classpath "$cobblemon_jar" -p "$class_name" 2>&1 || true
           done > pokemon-test-api.log
+          jar tf "$cobblemon_jar" | grep -iE 'CobblemonEntities|PokemonEntity' > entity-factory-classes.txt || true
+          cat entity-factory-classes.txt
+          for class_name in \
+            com.cobblemon.mod.common.entity.pokemon.PokemonEntity \
+            com.cobblemon.mod.common.pokemon.Pokemon \
+            com.cobblemon.mod.common.api.pokemon.PokemonSpecies \
+            com.cobblemon.mod.common.CobblemonEntities; do
+            javap -classpath "$cobblemon_jar" -p -c "$class_name" 2>&1 || true
+          done > pokemon-construction-bytecode.log
+          grep -E -A35 'PokemonEntity\\(|setPokemon\\(|setSpecies\\(|getByName\\(|getStandardForm\\(' pokemon-construction-bytecode.log || true
           cat pokemon-test-api.log
+
       - name: Add the installed KotlinForForge provider to the disposable run
         run: |
           mkdir -p smoke-run/mods
