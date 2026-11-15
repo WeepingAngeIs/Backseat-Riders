@@ -60,7 +60,7 @@ jobs:
           cp smoke-run/mods/open-parties-and-claims-neoforge-1.21.1-0.33.0.jar smoke-client/mods/
       - name: Start disposable NeoForge server with Cobblemon 1.8.4
         env:
-          JAVA_TOOL_OPTIONS: -Dmixin.debug.verbose=true -Dmixin.debug.export=true -Dbackseatriders.runGameTests=true -Dbackseatriders.requireOpacSmoke=true
+          JAVA_TOOL_OPTIONS: -Dmixin.debug.verbose=true -Dmixin.debug.export=true
         run: |
           mkdir -p smoke-run
           printf 'eula=true\\n' > smoke-run/eula.txt
@@ -81,12 +81,6 @@ jobs:
           grep -q 'PokemonSeatFallbackMixin' server-smoke.log
           grep -q 'HorseBackseatMixin' server-smoke.log
           grep -q 'Open Parties and Claims 0.33.0' server-smoke.log
-          for attempt in $(seq 1 120); do
-            if grep -q 'All 1 required tests passed' server-smoke.log; then break; fi
-            if ! kill -0 "$server_pid" 2>/dev/null; then cat server-smoke.log; exit 1; fi
-            sleep 1
-          done
-          if ! grep -q 'All 1 required tests passed' server-smoke.log; then cat server-smoke.log; exit 1; fi
           kill "$server_pid" 2>/dev/null || true
           wait "$server_pid" || true
       - name: Run server-side Cobblemon GameTest integration
