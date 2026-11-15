@@ -6,6 +6,9 @@ import net.minecraft.client.gui.GuiGraphics;
 import net.minecraft.client.gui.components.Button;
 import net.minecraft.client.gui.components.EditBox;
 import net.minecraft.client.gui.screens.Screen;
+import net.minecraft.client.gui.screens.inventory.InventoryScreen;
+import dev.backseatriders.RideablesSettingsData;
+import com.cobblemon.mod.common.entity.pokemon.PokemonEntity;
 import net.minecraft.nbt.CompoundTag;
 import net.minecraft.network.chat.Component;
 import net.neoforged.neoforge.network.PacketDistributor;
@@ -165,8 +168,14 @@ public final class SeatEditorScreen extends Screen {
         int panelX = left + 226;
         int panelY = top + 34;
         graphics.fill(panelX, panelY, panelX + 172, panelY + 153, 0xCC15202B);
-        graphics.fill(panelX + 57, panelY + 12, panelX + 115, panelY + 140, 0xFF566777);
-        graphics.fill(panelX + 67, panelY + 18, panelX + 105, panelY + 134, 0xFF697D8E);
+        PokemonEntity model = findLoadedPreview();
+        if (model != null) {
+            InventoryScreen.renderEntityInInventoryFollowsMouse(graphics,
+                panelX + 8, panelY + 8, panelX + 164, panelY + 145, 50, 0.15F, mouseX, mouseY, model);
+        } else {
+            graphics.fill(panelX + 57, panelY + 12, panelX + 115, panelY + 140, 0xFF566777);
+            graphics.fill(panelX + 67, panelY + 18, panelX + 105, panelY + 134, 0xFF697D8E);
+        }
         for (int seat = 0; seat < count; seat++) {
             Offset offset = offsetFor(seat);
             int x = panelX + 86 + (int) Math.round(offset.x * 8.0);
@@ -177,7 +186,18 @@ public final class SeatEditorScreen extends Screen {
             graphics.fill(x - 4, y - 4, x + 5, y + 5, color);
             graphics.drawString(font, Integer.toString(seat + 1), x + 7, y - 4, 0xFFFFFFFF);
         }
-        graphics.drawCenteredString(font, "Front", panelX + 86, panelY + 2, 0xFFDFE8F0);
+        graphics.drawCenteredString(font, model == null ? "Diagram (model not loaded)" : "Loaded Pokémon model",
+            panelX + 86, panelY + 2, 0xFFDFE8F0);
+    }
+
+    private PokemonEntity findLoadedPreview() {
+        Minecraft minecraft = Minecraft.getInstance();
+        if (minecraft.level == null) return null;
+        for (var entity : minecraft.level.entitiesForRendering()) {
+            if (entity instanceof PokemonEntity pokemon
+                    && profile.equals(RideablesSettingsData.profileKey(pokemon))) return pokemon;
+        }
+        return null;
     }
 
     private enum OffsetAxis { X, Y, Z }
