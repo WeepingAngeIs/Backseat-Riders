@@ -4,6 +4,7 @@ import com.cobblemon.mod.common.api.pokemon.PokemonSpecies;
 import com.cobblemon.mod.common.api.riding.Seat;
 import com.cobblemon.mod.common.entity.pokemon.PokemonEntity;
 import com.cobblemon.mod.common.pokemon.Species;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import net.minecraft.core.registries.BuiltInRegistries;
@@ -40,7 +41,7 @@ public final class PokemonSeatFallbackGameTests {
         passenger.setPos(0.0, 0.0, 0.0);
         level.addFreshEntity(passenger);
         helper.assertTrue(passenger.startRiding(charizard, true), "Could not attach test passenger");
-        charizard.setOccupiedSeats(Map.of(fallback, passenger));
+        charizard.setOccupiedSeats(new HashMap<>(Map.of(fallback, passenger)));
 
         charizard.setPos(12.0, 20.0, -7.0);
         charizard.setYRot(90.0F);
