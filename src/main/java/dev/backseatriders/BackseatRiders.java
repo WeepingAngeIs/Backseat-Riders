@@ -2,6 +2,8 @@ package dev.backseatriders;
 
 import java.util.UUID;
 import net.minecraft.commands.Commands;
+import com.mojang.brigadier.arguments.BoolArgumentType;
+import com.mojang.brigadier.arguments.IntegerArgumentType;
 import com.mojang.brigadier.arguments.StringArgumentType;
 import net.minecraft.network.chat.Component;
 import net.minecraft.server.level.ServerPlayer;
@@ -37,7 +39,21 @@ public final class BackseatRiders {
                 .executes(ctx -> changeTrust(ctx.getSource().getPlayerOrException(), StringArgumentType.getString(ctx, "player"), true))))
             .then(Commands.literal("revoke").then(Commands.argument("player", StringArgumentType.word())
                 .executes(ctx -> changeTrust(ctx.getSource().getPlayerOrException(), StringArgumentType.getString(ctx, "player"), false))))
-            .then(Commands.literal("list").executes(ctx -> listTrusted(ctx.getSource().getPlayerOrException()))));
+            .then(Commands.literal("list").executes(ctx -> listTrusted(ctx.getSource().getPlayerOrException())))
+            .then(Commands.literal("settings").requires(source -> source.hasPermission(2))
+                .then(Commands.literal("show").executes(ctx -> showSettings(ctx.getSource().getPlayerOrException())))
+                .then(Commands.literal("minimum-seats")
+                    .then(Commands.argument("count", IntegerArgumentType.integer(2, 16))
+                        .executes(ctx -> setMinimumSeats(ctx.getSource().getPlayerOrException(),
+                            IntegerArgumentType.getInteger(ctx, "count")))))
+                .then(Commands.literal("trusted-board")
+                    .then(Commands.argument("enabled", BoolArgumentType.bool())
+                        .executes(ctx -> setTrustedBoarding(ctx.getSource().getPlayerOrException(),
+                            BoolArgumentType.getBool(ctx, "enabled")))))
+                .then(Commands.literal("trusted-drive")
+                    .then(Commands.argument("enabled", BoolArgumentType.bool())
+                        .executes(ctx -> setTrustedDriving(ctx.getSource().getPlayerOrException(),
+                            BoolArgumentType.getBool(ctx, "enabled")))))));
     }
 
     @SubscribeEvent
@@ -68,7 +84,8 @@ public final class BackseatRiders {
         ServerPlayer onlineTarget = owner.getServer().getPlayerList().getPlayer(target);
         if (!allow && changed && onlineTarget != null) {
             Entity mount = onlineTarget.getVehicle();
-            if (RideableTrustData.isPokemon(mount) && owner.getUUID().equals(RideableTrustData.ownerId(mount))) {
+            if ((RideableTrustData.isPokemon(mount) || mount instanceof AbstractHorse)
+                    && owner.getUUID().equals(RideableTrustData.ownerId(mount))) {
                 onlineTarget.stopRiding();
             }
         }
@@ -94,5 +111,40 @@ public final class BackseatRiders {
         owner.sendSystemMessage(Component.literal(names.isEmpty() ? "Your rideable party has no trusted riders." : "Trusted riders: " + String.join(", ", names)));
         return names.size();
     }
+
+    private static int showSettings(ServerPlayer admin) {
+        RideablesSettingsData settings = RideablesSettingsData.get(admin.serverLevel());
+        admin.sendSystemMessage(Component.literal("Rideable settings: minimum seats=" + settings.minimumSeats()
+            + ", trusted boarding=" + settings.trustedRidersCanBoard()
+            + ", trusted driving=" + settings.trustedRidersCanDrive()));
+        return 1;
+    }
+
+    private static int setMinimumSeats(ServerPlayer admin, int count) {
+        RideablesSettingsData.get(admin.serverLevel()).setMinimumSeats(count);
+        admin.sendSystemMessage(Component.literal("Minimum Pok�mon seats set to " + count + ". Existing larger seat counts are preserved."));
+        return 1;
+    }
+
+    private static int setTrustedBoarding(ServerPlayer admin, boolean enabled) {
+        RideablesSettingsData.get(admin.serverLevel()).setTrustedRidersCanBoard(enabled);
+        if (!enabled) {
+            for (ServerPlayer rider : admin.getServer().getPlayerList().getPlayers()) {
+                Entity vehicle = rider.getVehicle();
+                UUID owner = RideableTrustData.ownerId(vehicle);
+                if ((RideableTrustData.isPokemon(vehicle) || vehicle instanceof AbstractHorse)
+                        && owner != null && !owner.equals(rider.getUUID())) rider.stopRiding();
+            }
+        }
+        admin.sendSystemMessage(Component.literal("Trusted-rider boarding is " + (enabled ? "enabled." : "disabled; non-owner trusted passengers were dismounted.")));
+        return 1;
+    }
+
+    private static int setTrustedDriving(ServerPlayer admin, boolean enabled) {
+        RideablesSettingsData.get(admin.serverLevel()).setTrustedRidersCanDrive(enabled);
+        admin.sendSystemMessage(Component.literal("Trusted-rider driving is " + (enabled ? "enabled." : "disabled.")));
+        return 1;
+    }
 }
+
 
