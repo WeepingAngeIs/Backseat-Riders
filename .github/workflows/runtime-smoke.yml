@@ -26,7 +26,7 @@ jobs:
           test -n "$cobblemon_jar"
           echo "Cobblemon runtime: $cobblemon_jar"
           javap -classpath "$cobblemon_jar" -p com.cobblemon.mod.common.entity.pokemon.PokemonEntity
-          javap -classpath "$cobblemon_jar" -c -p com.cobblemon.mod.common.entity.pokemon.PokemonEntity | awk '/^  .*\\);$/ { keep = ($0 ~ /(isRideableFor|tryRidingPokemon|travel|getRiddenInput|getRiddenSpeed|getControllingPassenger|canAddPassenger|addPassenger|tickRidden)\\(/) } keep { print }'
+          javap -classpath "$cobblemon_jar" -c -p com.cobblemon.mod.common.entity.pokemon.PokemonEntity | awk '/^  (public|protected|private)/ && index($0, "(") > 0 { keep = (index($0, "isRideableFor(") || index($0, "tryRidingPokemon(") || index($0, "getRideProp(") || index($0, "travel(") || index($0, "getRiddenInput(") || index($0, "getRiddenSpeed(") || index($0, "getControllingPassenger(") || index($0, "canAddPassenger(") || index($0, "addPassenger(") || index($0, "tickRidden(")) } keep { print }'
           javap -classpath "$cobblemon_jar" -p com.cobblemon.mod.common.entity.pokemon.PokemonServerDelegate
       - name: Add the installed KotlinForForge provider to disposable runs
         run: |
