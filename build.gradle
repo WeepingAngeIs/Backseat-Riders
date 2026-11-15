@@ -19,7 +19,10 @@ neoForge {
     runs {
         configureEach { systemProperty 'neoforge.enabledGameTestNamespaces', 'backseatriders' }
         client {}
-        server { programArgument '--nogui' }
+        server {
+            gameDirectory = project.file('smoke-run')
+            programArgument '--nogui'
+        }
     }
     mods { backseatriders { sourceSet sourceSets.main } }
 }
@@ -27,6 +30,7 @@ neoForge {
 dependencies {
     implementation 'org.spongepowered:mixin:0.8.7'
     compileOnly 'maven.modrinth:MdwFAVRL:xsVHrAsY'
+    runtimeOnly 'maven.modrinth:MdwFAVRL:xsVHrAsY'
     annotationProcessor 'org.spongepowered:mixin:0.8.7:processor'
     testImplementation 'org.junit.jupiter:junit-jupiter:5.11.4'
 }
