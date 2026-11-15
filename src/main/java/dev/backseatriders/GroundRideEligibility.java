@@ -1,7 +1,9 @@
 package dev.backseatriders;
 
 import com.cobblemon.mod.common.api.riding.RidingProperties;
+import com.cobblemon.mod.common.api.riding.Seat;
 import com.cobblemon.mod.common.entity.pokemon.PokemonEntity;
+import java.util.Map;
 import java.util.UUID;
 import net.minecraft.server.level.ServerPlayer;
 
@@ -18,7 +20,8 @@ public final class GroundRideEligibility {
         var settings = RideablesSettingsData.get(rider.serverLevel());
         var owner = RideableTrustData.ownerId(pokemon);
         boolean alreadyMounted = pokemon.getPassengers().contains(rider);
-        boolean hasSeat = alreadyMounted || pokemon.getOccupiedSeats().size() < pokemon.getSeats().size();
+        Map<Seat, net.minecraft.world.entity.Entity> occupied = pokemon.getOccupiedSeats();
+        boolean hasSeat = alreadyMounted || pokemon.getSeats().stream().anyMatch(seat -> !occupied.containsKey(seat));
         boolean trusted = owner != null && !owner.equals(rider.getUUID())
             && RideableTrustData.isTrustedOwner(owner, rider);
         return GroundRidePolicy.mayBoard(settings.groundFallbackEnabled(), hasNativeRidingBehaviour(pokemon),

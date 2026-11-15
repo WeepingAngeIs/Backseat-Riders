@@ -105,16 +105,6 @@ public abstract class PokemonRidingMixin {
         if (GroundRideEligibility.mayBoard(pokemon, rider)) cir.setReturnValue(true);
     }
 
-    /** Cobblemon's native capacity check is behavior-gated; allow only authorized riders on the generated fallback seats. */
-    @Inject(method = "canAddPassenger", at = @At("RETURN"), cancellable = true, remap = false)
-    private void backseatriders$allowGroundFallbackPassenger(Entity passenger,
-            CallbackInfoReturnable<Boolean> cir) {
-        if (cir.getReturnValue() || !(passenger instanceof ServerPlayer rider)) return;
-        PokemonEntity pokemon = (PokemonEntity) (Object) this;
-        if (!GroundRideEligibility.hasNativeRidingBehaviour(pokemon)
-                && GroundRideEligibility.mayBoard(pokemon, rider)) cir.setReturnValue(true);
-    }
-
     /** Replace only the behavior-provided input vector; Cobblemon retains its own collision, friction, and gravity path. */
     @Redirect(method = "travel", at = @At(value = "FIELD",
         target = "Lnet/minecraft/world/phys/Vec3;ZERO:Lnet/minecraft/world/phys/Vec3;",

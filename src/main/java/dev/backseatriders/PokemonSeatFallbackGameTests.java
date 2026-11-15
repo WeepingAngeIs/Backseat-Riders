@@ -19,7 +19,6 @@ import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.world.entity.Entity;
 import net.minecraft.world.entity.EntityType;
 import net.minecraft.world.phys.Vec3;
-import net.neoforged.neoforge.common.util.FakePlayerFactory;
 
 @PrefixGameTestTemplate(false)
 public final class PokemonSeatFallbackGameTests {
@@ -44,7 +43,7 @@ public final class PokemonSeatFallbackGameTests {
         helper.assertTrue(bulbasaurHasFallback && !behaviorWithoutSeatProfile,
             "Bulbasaur fallback must be generated without claiming it has a native profile");
 
-        ServerPlayer simulatedOwner = FakePlayerFactory.getMinecraft(level);
+        ServerPlayer simulatedOwner = helper.makeMockServerPlayerInLevel();
         if (simulatedOwner.getVehicle() != null) simulatedOwner.stopRiding();
         PokemonEntity ownedBulbasaur = createPokemonEntity(helper, level, "bulbasaur");
         ownedBulbasaur.setOwnerUUID(simulatedOwner.getUUID());
