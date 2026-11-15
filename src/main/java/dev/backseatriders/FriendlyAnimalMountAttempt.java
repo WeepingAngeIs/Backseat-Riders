@@ -13,7 +13,7 @@ public final class FriendlyAnimalMountAttempt {
         Attempt previous = CURRENT.get();
         CURRENT.set(new Attempt(animal, rider));
         try {
-            return rider.startRiding(animal, true);
+            return rider.startRiding(animal, false);
         } finally {
             if (previous == null) CURRENT.remove();
             else CURRENT.set(previous);

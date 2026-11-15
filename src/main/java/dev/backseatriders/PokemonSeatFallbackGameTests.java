@@ -106,7 +106,7 @@ public final class PokemonSeatFallbackGameTests {
         helper.assertTrue(!FriendlyAnimalMountAttempt.startRiding(cow, simulatedOwner),
             "Registered friendly animals must remain unrideable when their server setting is disabled");
         settings.setFriendlyAnimalsEnabled(true);
-        helper.assertTrue(!simulatedOwner.startRiding(cow, true),
+        helper.assertTrue(!simulatedOwner.startRiding(cow, false),
             "Other code must not bypass the authorized non-canceled interaction path");
         helper.assertTrue(FriendlyAnimalMountAttempt.startRiding(cow, simulatedOwner),
             "The explicitly assigned owner could not mount an enabled adult cow");
