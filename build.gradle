@@ -25,6 +25,7 @@ neoForge {
             programArgument '--nogui'
         }
         gameTestServer {
+            type = 'gameTestServer'
             gameDirectory = project.file('smoke-gametest')
             programArgument '--nogui'
         }
