@@ -128,6 +128,7 @@ public final class PokemonSeatFallbackGameTests {
             "The registered animal ground controller did not move the mount forward");
         trustedDriver.zza = 0.0F;
         trust.revoke(simulatedOwner.getUUID(), trustedDriver.getUUID());
+        cow.setOnGround(true);
         cow.travel(Vec3.ZERO);
         helper.assertTrue(!cow.getPassengers().contains(trustedDriver),
             "A revoked trusted animal rider must be dismounted before driving continues");
