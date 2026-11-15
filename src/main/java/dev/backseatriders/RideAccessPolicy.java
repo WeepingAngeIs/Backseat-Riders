@@ -4,7 +4,7 @@ import java.util.Set;
 import java.util.UUID;
 
 /** Decision helpers for the narrow owner/passenger gates in Cobblemon's riding method. */
-final class RideAccessPolicy {
+public final class RideAccessPolicy {
     private RideAccessPolicy() {}
 
     static boolean ownerGate(UUID owner, UUID rider, Set<UUID> trustedRiders) {
@@ -12,7 +12,7 @@ final class RideAccessPolicy {
     }
 
     /** Return the value Cobblemon should see for its second (passenger-list) emptiness check. */
-    static boolean passengerGateReportsEmpty(boolean ownerOrTrusted, boolean actuallyEmpty) {
+    public static boolean passengerGateReportsEmpty(boolean ownerOrTrusted, boolean actuallyEmpty) {
         return !ownerOrTrusted || actuallyEmpty;
     }
 }

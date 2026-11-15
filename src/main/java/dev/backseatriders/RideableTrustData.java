@@ -36,11 +36,6 @@ public final class RideableTrustData extends SavedData {
         return owner != null && isTrustedOwner(owner, player);
     }
 
-    private static boolean isTrustedOwner(UUID owner, Player rider) {
-        if (!(rider instanceof ServerPlayer serverRider)) return false;
-        return TrustPolicy.permits(owner, rider.getUUID(), get(serverRider.serverLevel()).trusted(owner));
-    }
-
     public static boolean isTrustedOwner(UUID ownerId, Player rider) {
         if (!(rider instanceof ServerPlayer serverRider)) return false;
         return TrustPolicy.permits(ownerId, rider.getUUID(), get(serverRider.serverLevel()).trusted(ownerId));
