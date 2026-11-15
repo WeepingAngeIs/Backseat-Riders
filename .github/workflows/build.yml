@@ -22,6 +22,12 @@ jobs:
           gradle-version: '8.10.2'
       - name: Build mod jar
         run: gradle --no-daemon clean build
+      - name: Record JAR checksum
+        run: |
+          jar_path="$(find build/libs -maxdepth 1 -type f -name 'backseat-riders-*.jar' ! -name '*-sources.jar' -print -quit)"
+          test -n "$jar_path"
+          echo "Built artifact: $jar_path"
+          sha256sum "$jar_path"
       - uses: actions/upload-artifact@v4
         with:
           name: backseat-riders-${{ github.sha }}
