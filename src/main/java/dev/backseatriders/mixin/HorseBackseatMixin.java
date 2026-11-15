@@ -24,7 +24,7 @@ public abstract class HorseBackseatMixin {
     }
 
     @Inject(method = "positionRider", at = @At("TAIL"), remap = false)
-    private void backseatriders$spaceSecondHorseRider(Entity passenger, Entity.MoveFunction move, CallbackInfo ci) {
+    private void backseatriders$spaceSecondHorseRider(Entity passenger, CallbackInfo ci) {
         Entity vehicle = (Entity) (Object) this;
         if (!(vehicle instanceof AbstractHorse horse) || horse.getPassengers().size() < 2
                 || horse.getPassengers().indexOf(passenger) != 1) return;
@@ -41,4 +41,3 @@ public abstract class HorseBackseatMixin {
             || player instanceof ServerPlayer serverPlayer && RideableTrustData.isTrustedOwner(owner, serverPlayer));
     }
 }
-
