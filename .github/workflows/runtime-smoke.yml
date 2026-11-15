@@ -18,6 +18,16 @@ jobs:
       - uses: gradle/actions/setup-gradle@v4
         with:
           gradle-version: '8.10.2'
+      - name: Inspect installed Cobblemon riding delegate bytecode
+        run: |
+          gradle --no-daemon -q dependencyInsight --dependency MdwFAVRL --configuration runtimeClasspath
+          cobblemon_jar=$(find "$HOME/.gradle/caches/modules-2/files-2.1" -path '*/MdwFAVRL/xsVHrAsY/*.jar' -print -quit)
+          test -n "$cobblemon_jar"
+          jar tf "$cobblemon_jar" | grep -E '/(Pokemon(Client|Server)Delegate|PokemonEntity|Seat)\.class$' \
+            | sed 's#/#.#g; s#\.class$##' \
+            | while read -r class_name; do javap -classpath "$cobblemon_jar" -p -c "$class_name"; done \
+            > riding-api.log
+          grep -E 'positionRider|getSeatLocator|getPassengerOffsets|getSeats|Seat\(' riding-api.log
       - name: Start disposable NeoForge server with Cobblemon 1.8.4
         env:
           JAVA_TOOL_OPTIONS: -Dmixin.debug.verbose=true -Dmixin.debug.export=true
@@ -49,6 +59,8 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: runtime-smoke-log-${{ github.sha }}
-          path: server-smoke.log
+          path: |
+            server-smoke.log
+            riding-api.log
           if-no-files-found: ignore
 
