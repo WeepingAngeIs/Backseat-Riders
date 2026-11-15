@@ -18,8 +18,9 @@ neoForge {
     version = '21.1.249'
     runs {
         configureEach { systemProperty 'neoforge.enabledGameTestNamespaces', 'backseatriders' }
-        client {}
+        client { client() }
         server {
+            server()
             gameDirectory = project.file('smoke-run')
             programArgument '--nogui'
         }
