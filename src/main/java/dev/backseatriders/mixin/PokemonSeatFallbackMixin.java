@@ -55,7 +55,8 @@ public abstract class PokemonSeatFallbackMixin {
     @Unique
     private static boolean backseatriders$hasBehaviorWithoutSeatProfile(PokemonEntity pokemon) {
         RidingProperties properties = pokemon.getRideProp();
-        return properties != null && properties.getSeats().isEmpty() && !properties.getBehaviours().isEmpty();
+        return properties != null && properties.getSeats().isEmpty()
+            && properties.getBehaviours() != null && !properties.getBehaviours().isEmpty();
     }
 
     @Unique
