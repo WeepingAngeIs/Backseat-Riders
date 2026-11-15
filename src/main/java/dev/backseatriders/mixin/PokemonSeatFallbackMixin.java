@@ -120,10 +120,11 @@ public abstract class PokemonSeatFallbackMixin implements PokemonSeatFallbackAcc
         }
         if (targetCount <= nativeSeats.size()) return;
         int nativeSeatCount = nativeSeats.size();
+        CompoundTag locatorConfig = synchronizedLocators.copy();
         cir.setReturnValue(SeatFallbackLists.ensureCount(nativeSeats, targetCount,
             index -> SeatFallbackPosition.seat(nativeSeatCount, index,
-                synchronizedLocators.contains(Integer.toString(index))
-                    ? synchronizedLocators.getString(Integer.toString(index)) : null)));
+                locatorConfig.contains(Integer.toString(index))
+                    ? locatorConfig.getString(Integer.toString(index)) : null)));
     }
 
     @Unique
