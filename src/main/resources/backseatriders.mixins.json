@@ -3,7 +3,7 @@
   "minVersion": "0.8",
   "package": "dev.backseatriders.mixin",
   "compatibilityLevel": "JAVA_21",
-  "mixins": ["PokemonRidingMixin", "HorseBackseatMixin"],
+  "mixins": ["PokemonRidingMixin", "HorseBackseatMixin", "HorseInteractionMixin"],
   "injectors": { "defaultRequire": 1 }
 }
 
