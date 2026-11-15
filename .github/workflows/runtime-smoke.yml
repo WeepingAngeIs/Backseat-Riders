@@ -31,6 +31,15 @@ jobs:
             | while read -r class_name; do javap -classpath "$cobblemon_jar" -p -c "$class_name"; done \
             > riding-api.log
           grep -E -A80 'positionRider\(|getSeatLocator\(|getPassengerOffsets\(|getSeats\(|Seat\(' riding-api.log
+          for class_name in \
+            com.cobblemon.mod.common.entity.pokemon.PokemonEntity \
+            com.cobblemon.mod.common.api.pokemon.PokemonProperties \
+            com.cobblemon.mod.common.pokemon.Pokemon \
+            com.cobblemon.mod.common.pokemon.Species \
+            com.cobblemon.mod.common.api.pokemon.PokemonSpecies; do
+            javap -classpath "$cobblemon_jar" -p "$class_name" 2>&1 || true
+          done > pokemon-test-api.log
+          cat pokemon-test-api.log
       - name: Add the installed KotlinForForge provider to the disposable run
         run: |
           mkdir -p smoke-run/mods
@@ -79,4 +88,5 @@ jobs:
             server-smoke.log
             riding-api.log
             riding-classes.txt
+            pokemon-test-api.log
           if-no-files-found: ignore
