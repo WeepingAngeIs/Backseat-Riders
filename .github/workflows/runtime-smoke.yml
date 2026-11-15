@@ -8,7 +8,7 @@ permissions:
 jobs:
   dedicated-server:
     runs-on: ubuntu-latest
-    timeout-minutes: 15
+    timeout-minutes: 20
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-java@v4
@@ -19,41 +19,17 @@ jobs:
         with:
           gradle-version: '8.10.2'
           cache-read-only: false
-      - name: Inspect installed Cobblemon riding delegate bytecode
+      - name: Resolve exact Cobblemon 1.8.4 runtime
         run: |
           gradle --no-daemon -q resolveRuntimeClasspath
           cobblemon_jar=$(find "$HOME/.gradle/caches/modules-2/files-2.1" -path '*/MdwFAVRL/xsVHrAsY/*.jar' -print -quit)
           test -n "$cobblemon_jar"
-          echo "Inspecting $cobblemon_jar"
-          jar tf "$cobblemon_jar" | grep -iE 'Pokemon(Client|Server)Delegate|PokemonEntity\.class|/Seat\.class' > riding-classes.txt
-          cat riding-classes.txt
-          sed 's#/#.#g; s#\.class$##' riding-classes.txt \
-            | while read -r class_name; do javap -classpath "$cobblemon_jar" -p -c "$class_name"; done \
-            > riding-api.log
-          grep -E -A80 'positionRider\(|getSeatLocator\(|getPassengerOffsets\(|getSeats\(|Seat\(' riding-api.log
-          for class_name in \
-            com.cobblemon.mod.common.entity.pokemon.PokemonEntity \
-            com.cobblemon.mod.common.api.pokemon.PokemonProperties \
-            com.cobblemon.mod.common.pokemon.Pokemon \
-            com.cobblemon.mod.common.pokemon.Species \
-            com.cobblemon.mod.common.api.pokemon.PokemonSpecies; do
-            javap -classpath "$cobblemon_jar" -p "$class_name" 2>&1 || true
-          done > pokemon-test-api.log
-          jar tf "$cobblemon_jar" | grep -iE 'CobblemonEntities|PokemonEntity' > entity-factory-classes.txt || true
-          cat entity-factory-classes.txt
-          for class_name in \
-            com.cobblemon.mod.common.entity.pokemon.PokemonEntity \
-            com.cobblemon.mod.common.pokemon.Pokemon \
-            com.cobblemon.mod.common.api.pokemon.PokemonSpecies \
-            com.cobblemon.mod.common.CobblemonEntities; do
-            javap -classpath "$cobblemon_jar" -p -c "$class_name" 2>&1 || true
-          done > pokemon-construction-bytecode.log
-          grep -E -A35 'PokemonEntity\\(|setPokemon\\(|setSpecies\\(|getByName\\(|getStandardForm\\(' pokemon-construction-bytecode.log || true
-          cat pokemon-test-api.log
-
-      - name: Add the installed KotlinForForge provider to the disposable run
+          echo "Cobblemon runtime: $cobblemon_jar"
+          javap -classpath "$cobblemon_jar" -p com.cobblemon.mod.common.entity.pokemon.PokemonEntity
+          javap -classpath "$cobblemon_jar" -p com.cobblemon.mod.common.entity.pokemon.PokemonServerDelegate
+      - name: Add the installed KotlinForForge provider to disposable runs
         run: |
-          mkdir -p smoke-run/mods
+          mkdir -p smoke-run/mods smoke-gametest/mods
           versions=$(curl -fsSLG \
             --data-urlencode 'loaders=["neoforge"]' \
             --data-urlencode 'game_versions=["1.21.1"]' \
@@ -61,6 +37,7 @@ jobs:
           url=$(printf '%s' "$versions" | jq -r '.[] | select(.version_number == "5.12.0") | .files[] | select(.primary == true) | .url' | head -n 1)
           test -n "$url"
           curl -fsSL "$url" -o smoke-run/mods/kotlinforforge-5.12.0-all.jar
+          cp smoke-run/mods/kotlinforforge-5.12.0-all.jar smoke-gametest/mods/
       - name: Start disposable NeoForge server with Cobblemon 1.8.4
         env:
           JAVA_TOOL_OPTIONS: -Dmixin.debug.verbose=true -Dmixin.debug.export=true
@@ -70,13 +47,8 @@ jobs:
           timeout --signal=TERM 8m gradle --no-daemon runServer --stacktrace > server-smoke.log 2>&1 &
           server_pid=$!
           for attempt in $(seq 1 480); do
-            if grep -q 'Done (' server-smoke.log; then
-              break
-            fi
-            if ! kill -0 "$server_pid" 2>/dev/null; then
-              cat server-smoke.log
-              exit 1
-            fi
+            if grep -q 'Done (' server-smoke.log; then break; fi
+            if ! kill -0 "$server_pid" 2>/dev/null; then cat server-smoke.log; exit 1; fi
             sleep 1
           done
           if ! grep -q 'Done (' server-smoke.log; then
@@ -84,20 +56,31 @@ jobs:
             kill "$server_pid" 2>/dev/null || true
             exit 1
           fi
-          grep -E 'Done \(|backseatriders\.mixins\.json|PokemonRidingMixin|PokemonSeatFallbackMixin|HorseBackseatMixin' server-smoke.log
+          grep -E 'Done \(|PokemonRidingMixin|PokemonSeatFallbackMixin|HorseBackseatMixin' server-smoke.log
           grep -q 'PokemonRidingMixin' server-smoke.log
           grep -q 'PokemonSeatFallbackMixin' server-smoke.log
           grep -q 'HorseBackseatMixin' server-smoke.log
           kill "$server_pid" 2>/dev/null || true
           wait "$server_pid" || true
-      - name: Preserve disposable server log
+      - name: Run server-side Cobblemon GameTest integration
+        env:
+          JAVA_TOOL_OPTIONS: -Dmixin.debug.verbose=true -Dmixin.debug.export=true
+        run: |
+          mkdir -p smoke-gametest
+          printf 'eula=true\n' > smoke-gametest/eula.txt
+          if ! timeout --signal=TERM 8m gradle --no-daemon runGameTestServer --stacktrace > game-test.log 2>&1; then
+            cat game-test.log
+            exit 1
+          fi
+          grep -Ei 'fallback|GameTestServer|tests? passed|Done \(' game-test.log
+          grep -q 'PokemonSeatFallbackServerMixin' game-test.log
+          grep -qi 'fallbackSeatsAndServerPosition' game-test.log
+      - name: Preserve disposable server and GameTest logs
         if: always()
         uses: actions/upload-artifact@v4
         with:
-          name: runtime-smoke-log-${{ github.sha }}
+          name: runtime-smoke-log-\${{ github.sha }}
           path: |
             server-smoke.log
-            riding-api.log
-            riding-classes.txt
-            pokemon-test-api.log
+            game-test.log
           if-no-files-found: ignore

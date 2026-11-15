@@ -24,6 +24,12 @@ neoForge {
             gameDirectory = project.file('smoke-run')
             programArgument '--nogui'
         }
+        gameTestServer {
+            gameTestServer()
+            gameDirectory = project.file('smoke-gametest')
+            programArgument '--nogui'
+            setForceExit false
+        }
     }
     mods { backseatriders { sourceSet sourceSets.main } }
 }
@@ -43,4 +49,3 @@ tasks.register('resolveRuntimeClasspath') {
 tasks.withType(JavaCompile).configureEach { options.encoding = 'UTF-8'; options.release = 21 }
 tasks.withType(Test).configureEach { useJUnitPlatform() }
 tasks.jar { manifest { attributes('MixinConfigs': 'backseatriders.mixins.json') } }
-

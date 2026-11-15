@@ -2,8 +2,8 @@ package dev.backseatriders.mixin;
 
 import com.cobblemon.mod.common.api.riding.Seat;
 import com.cobblemon.mod.common.entity.pokemon.PokemonEntity;
-import dev.backseatriders.SeatFallbackPolicy;
 import dev.backseatriders.SeatFallbackLists;
+import dev.backseatriders.SeatFallbackPolicy;
 import dev.backseatriders.SeatFallbackPosition;
 import java.util.List;
 import net.minecraft.world.entity.Entity;
@@ -25,9 +25,9 @@ public abstract class PokemonSeatFallbackMixin {
     }
 
     @Inject(method = "positionRider", at = @At("TAIL"), remap = false)
-    private void backseatriders$positionBodyFallback(Entity passenger, Entity.MoveFunction updater, CallbackInfo ci) {
+    private void backseatriders$positionClientBodyFallback(Entity passenger, Entity.MoveFunction updater, CallbackInfo ci) {
         PokemonEntity pokemon = (PokemonEntity) (Object) this;
-        if (SeatFallbackPosition.isBodyFallback(pokemon, passenger)) {
+        if (pokemon.level().isClientSide() && SeatFallbackPosition.isBodyFallback(pokemon, passenger)) {
             SeatFallbackPosition.position(pokemon, passenger, updater);
         }
     }

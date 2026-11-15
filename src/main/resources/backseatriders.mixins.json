@@ -8,5 +8,8 @@
     "PokemonSeatFallbackMixin",
     "HorseBackseatMixin"
   ],
+  "server": [
+    "PokemonSeatFallbackServerMixin"
+  ],
   "injectors": { "defaultRequire": 1 }
 }
