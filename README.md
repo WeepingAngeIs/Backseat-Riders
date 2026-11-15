@@ -13,7 +13,7 @@ Backseat Riders targets Minecraft 1.21.1, NeoForge 21.1.249, and Cobblemon 1.8.4
 
 ## Verification
 
-- GitHub Actions builds on Java 21 and runs JUnit policy, geometry, and settings persistence tests.
+- GitHub Actions builds on Java 21 and runs JUnit policy and geometry tests, plus server GameTest coverage for settings persistence.
 - A disposable NeoForge 21.1.249 server launches with Cobblemon 1.8.4 and checks mixin application.
 - A disposable GameTest checks one-seat Charizard fallback, two-seat Dewgong and six-seat Camerupt preservation, Bulbasaur's lack of native riding behavior, configured seat expansion, stable seat identity, and server passenger positioning.
 - A disposable Xvfb client startup check is included in the current workflow; it verifies client-side mixin loading, not riding visuals or real-player interaction.
