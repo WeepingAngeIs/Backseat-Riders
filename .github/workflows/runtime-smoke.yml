@@ -20,7 +20,7 @@ jobs:
           gradle-version: '8.10.2'
       - name: Inspect installed Cobblemon riding delegate bytecode
         run: |
-          gradle --no-daemon -q dependencyInsight --dependency MdwFAVRL --configuration runtimeClasspath
+          gradle --no-daemon -q resolveRuntimeClasspath
           cobblemon_jar=$(find "$HOME/.gradle/caches/modules-2/files-2.1" -path '*/MdwFAVRL/xsVHrAsY/*.jar' -print -quit)
           test -n "$cobblemon_jar"
           echo "Inspecting $cobblemon_jar"
