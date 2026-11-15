@@ -13,11 +13,13 @@ import net.minecraft.world.entity.player.Player;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.world.entity.LivingEntity;
 import net.minecraft.world.entity.Entity;
+import net.minecraft.world.phys.Vec3;
 import org.spongepowered.asm.mixin.Mixin;
 import org.spongepowered.asm.mixin.Unique;
 import org.spongepowered.asm.mixin.injection.At;
 import org.spongepowered.asm.mixin.injection.Inject;
 import org.spongepowered.asm.mixin.injection.Redirect;
+import org.spongepowered.asm.mixin.injection.ModifyVariable;
 import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
 import org.spongepowered.asm.mixin.injection.callback.CallbackInfoReturnable;
 
@@ -79,13 +81,42 @@ public abstract class PokemonRidingMixin {
             return;
         }
         for (Entity passenger : pokemon.getPassengers()) {
-            if (passenger instanceof ServerPlayer player && RideableTrustData.isTrustedDriver(pokemon, player)) {
+            boolean mayDrive = passenger instanceof ServerPlayer player
+                && (GroundRideEligibility.hasNativeRidingBehaviour((PokemonEntity) pokemon)
+                    ? RideableTrustData.isOwner(pokemon, player) || RideableTrustData.isTrustedDriver(pokemon, player)
+                    : GroundRideEligibility.mayDrive((PokemonEntity) pokemon, player));
+            if (mayDrive) {
+                ServerPlayer player = (ServerPlayer) passenger;
                 pokemon.getEntityData().set(backseatriders$trustedDriver, Optional.of(player.getUUID()));
                 cir.setReturnValue(player);
                 return;
             }
         }
         pokemon.getEntityData().set(backseatriders$trustedDriver, Optional.empty());
+    }
+
+    /** A behaviorless form gets the conservative ground controller only after all explicit safety gates pass. */
+    @Inject(method = "isRideableFor", at = @At("RETURN"), cancellable = true, remap = false)
+    private void backseatriders$allowSafeGroundFallback(ServerPlayer rider, CallbackInfoReturnable<Boolean> cir) {
+        if (cir.getReturnValue()) return;
+        PokemonEntity pokemon = (PokemonEntity) (Object) this;
+        if (GroundRideEligibility.mayBoard(pokemon, rider)) cir.setReturnValue(true);
+    }
+
+    /** Replace only the behavior-provided input vector; Cobblemon retains its own collision, friction, and gravity path. */
+    @ModifyVariable(method = "travel", at = @At(value = "STORE", ordinal = 0), ordinal = 0, remap = false)
+    private Vec3 backseatriders$groundOnlyInput(Vec3 nativeInput) {
+        PokemonEntity pokemon = (PokemonEntity) (Object) this;
+        PokemonSeatFallbackAccess access = (PokemonSeatFallbackAccess) pokemon;
+        if (!access.backseatriders$isGroundFallbackEnabled()) return nativeInput;
+        LivingEntity controlling = pokemon.getControllingPassenger();
+        if (!(controlling instanceof Player rider) || !GroundRideEligibility.mayDrive(pokemon, rider)) return nativeInput;
+        if (!pokemon.onGround() || pokemon.isInWaterOrBubble()) return Vec3.ZERO;
+
+        pokemon.setYRot(rider.getYRot());
+        Vec3 input = new Vec3(rider.xxa, 0.0, rider.zza);
+        if (input.lengthSqr() > 1.0) input = input.normalize();
+        return input.scale(access.backseatriders$getGroundFallbackSpeed());
     }
 }
 

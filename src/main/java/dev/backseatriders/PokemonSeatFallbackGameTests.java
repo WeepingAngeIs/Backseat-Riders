@@ -35,13 +35,12 @@ public final class PokemonSeatFallbackGameTests {
         RidingProperties bulbasaurRiding = bulbasaur.getRideProp();
         boolean behaviorWithoutSeatProfile = bulbasaurRiding != null && bulbasaurRiding.getSeats().isEmpty()
             && bulbasaurRiding.getBehaviours() != null && !bulbasaurRiding.getBehaviours().isEmpty();
-        int expectedBulbasaurSeats = behaviorWithoutSeatProfile ? 2 : 0;
-        helper.assertTrue(bulbasaur.getSeats().size() == expectedBulbasaurSeats,
-            "Seatless profile must gain seats only when it has a native riding behavior");
+        helper.assertTrue(bulbasaur.getSeats().size() == 2,
+            "Behaviorless Bulbasaur must receive two conservative ground fallback seats");
         boolean bulbasaurHasFallback = bulbasaur.getSeats().stream()
             .anyMatch(seat -> SeatFallbackPosition.slot(seat) != null);
-        helper.assertTrue(bulbasaurHasFallback == behaviorWithoutSeatProfile,
-            "Zero-seat fallback eligibility must preserve native behavior requirements");
+        helper.assertTrue(bulbasaurHasFallback && !behaviorWithoutSeatProfile,
+            "Bulbasaur fallback must be generated without claiming it has a native profile");
 
         Seat fallback = charizard.getSeats().stream()
             .filter(seat -> SeatFallbackPosition.slot(seat) != null)
@@ -78,6 +77,11 @@ public final class PokemonSeatFallbackGameTests {
                 loadedSettings.seatOffset(RideablesSettingsData.profileKey(charizard),
                     SeatFallbackPosition.slot(fallback).index())),
             "Per-form seat offsets did not survive SavedData serialization");
+        settings.setGroundFallbackSpeed(0.08);
+        loadedSettings = RideablesSettingsData.load(settings.save(new CompoundTag(), null), null);
+        helper.assertTrue(loadedSettings.groundFallbackEnabled()
+                && Math.abs(loadedSettings.groundFallbackSpeed() - 0.08) < 1.0E-6,
+            "Ground fallback settings did not survive SavedData serialization");
         charizard.positionRider(passenger);
         Vec3 profiled = passenger.position();
         helper.assertTrue(profiled.distanceToSqr(new Vec3(11.25, 21.25, -7.5)) < 1.0E-6,
@@ -94,6 +98,11 @@ public final class PokemonSeatFallbackGameTests {
         helper.assertTrue(expanded.getSeats().stream().filter(seat -> SeatFallbackPosition.slot(seat) != null).count() == 3,
             "Admin minimum-seat setting must add only seats beyond the native profile");
         settings.setMinimumSeats(2);
+        settings.setGroundFallbackEnabled(false);
+        helper.assertTrue(bulbasaur.getSeats().isEmpty(),
+            "Disabling the behaviorless fallback must remove generated seats when unoccupied");
+        settings.setGroundFallbackEnabled(true);
+        settings.setGroundFallbackSpeed(0.06);
         helper.succeed();
     }
 

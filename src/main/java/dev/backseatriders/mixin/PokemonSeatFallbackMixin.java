@@ -28,11 +28,17 @@ public abstract class PokemonSeatFallbackMixin implements PokemonSeatFallbackAcc
         SynchedEntityData.defineId(PokemonEntity.class, EntityDataSerializers.INT);
     @Unique private static final EntityDataAccessor<CompoundTag> backseatriders$syncedSeatOffsets =
         SynchedEntityData.defineId(PokemonEntity.class, EntityDataSerializers.COMPOUND_TAG);
+    @Unique private static final EntityDataAccessor<Boolean> backseatriders$syncedGroundFallback =
+        SynchedEntityData.defineId(PokemonEntity.class, EntityDataSerializers.BOOLEAN);
+    @Unique private static final EntityDataAccessor<Float> backseatriders$syncedGroundSpeed =
+        SynchedEntityData.defineId(PokemonEntity.class, EntityDataSerializers.FLOAT);
 
     @Inject(method = "defineSynchedData", at = @At("TAIL"), remap = false)
     private void backseatriders$defineSeatCount(SynchedEntityData.Builder builder, CallbackInfo ci) {
         builder.define(backseatriders$syncedSeatCount, 0);
         builder.define(backseatriders$syncedSeatOffsets, new CompoundTag());
+        builder.define(backseatriders$syncedGroundFallback, false);
+        builder.define(backseatriders$syncedGroundSpeed, 0.06F);
     }
 
     @Override
@@ -47,6 +53,26 @@ public abstract class PokemonSeatFallbackMixin implements PokemonSeatFallbackAcc
         ((PokemonEntity) (Object) this).getEntityData().set(backseatriders$syncedSeatOffsets, offsets);
     }
 
+    @Override @Unique
+    public boolean backseatriders$isGroundFallbackEnabled() {
+        return ((PokemonEntity) (Object) this).getEntityData().get(backseatriders$syncedGroundFallback);
+    }
+
+    @Override @Unique
+    public void backseatriders$setGroundFallbackEnabled(boolean enabled) {
+        ((PokemonEntity) (Object) this).getEntityData().set(backseatriders$syncedGroundFallback, enabled);
+    }
+
+    @Override @Unique
+    public double backseatriders$getGroundFallbackSpeed() {
+        return ((PokemonEntity) (Object) this).getEntityData().get(backseatriders$syncedGroundSpeed);
+    }
+
+    @Override @Unique
+    public void backseatriders$setGroundFallbackSpeed(double speed) {
+        ((PokemonEntity) (Object) this).getEntityData().set(backseatriders$syncedGroundSpeed, (float) speed);
+    }
+
     @Inject(method = "getSeats", at = @At("RETURN"), cancellable = true, remap = false)
     private void backseatriders$appendConfiguredSeats(CallbackInfoReturnable<List<Seat>> cir) {
         PokemonEntity pokemon = (PokemonEntity) (Object) this;
@@ -55,9 +81,15 @@ public abstract class PokemonSeatFallbackMixin implements PokemonSeatFallbackAcc
 
         int targetCount;
         if (pokemon.level() instanceof ServerLevel serverLevel) {
-            targetCount = SeatFallbackPolicy.effectiveSeatCount(nativeSeats.size(),
-                backseatriders$hasBehaviorWithoutSeatProfile(pokemon),
-                RideablesSettingsData.get(serverLevel).minimumSeats(),
+            RideablesSettingsData settings = RideablesSettingsData.get(serverLevel);
+            boolean nativeBehavior = GroundRideEligibility.hasNativeRidingBehaviour(pokemon);
+            boolean groundFallback = settings.groundFallbackEnabled() && !nativeBehavior;
+            pokemon.getEntityData().set(backseatriders$syncedGroundFallback, groundFallback);
+            pokemon.getEntityData().set(backseatriders$syncedGroundSpeed, (float) settings.groundFallbackSpeed());
+            boolean mayGenerateSeats = nativeBehavior || groundFallback;
+            targetCount = !mayGenerateSeats ? nativeSeats.size() : SeatFallbackPolicy.effectiveSeatCount(nativeSeats.size(),
+                backseatriders$hasNativeBehaviorWithoutSeatProfile(pokemon) || groundFallback,
+                settings.minimumSeats(),
                 pokemon.getOccupiedSeats().size(), backseatriders$highestOccupiedFallbackIndex(pokemon));
             pokemon.getEntityData().set(backseatriders$syncedSeatCount, targetCount);
         } else {
@@ -70,7 +102,7 @@ public abstract class PokemonSeatFallbackMixin implements PokemonSeatFallbackAcc
     }
 
     @Unique
-    private static boolean backseatriders$hasBehaviorWithoutSeatProfile(PokemonEntity pokemon) {
+    private static boolean backseatriders$hasNativeBehaviorWithoutSeatProfile(PokemonEntity pokemon) {
         RidingProperties properties = pokemon.getRideProp();
         return properties != null && properties.getSeats().isEmpty()
             && properties.getBehaviours() != null && !properties.getBehaviours().isEmpty();

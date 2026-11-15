@@ -6,5 +6,9 @@ import net.minecraft.nbt.CompoundTag;
 public interface PokemonSeatFallbackAccess {
     CompoundTag backseatriders$getSeatOffsets();
     void backseatriders$setSeatOffsets(CompoundTag offsets);
+    boolean backseatriders$isGroundFallbackEnabled();
+    void backseatriders$setGroundFallbackEnabled(boolean enabled);
+    double backseatriders$getGroundFallbackSpeed();
+    void backseatriders$setGroundFallbackSpeed(double speed);
 }
 

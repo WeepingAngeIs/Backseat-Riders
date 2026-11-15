@@ -18,6 +18,8 @@ public final class RideablesSettingsData extends SavedData {
     private int minimumSeats = 2;
     private boolean trustedRidersCanBoard = true;
     private boolean trustedRidersCanDrive = true;
+    private boolean groundFallbackEnabled = true;
+    private double groundFallbackSpeed = 0.06;
     private final Map<String, Map<Integer, Offset>> seatOffsets = new HashMap<>();
 
     public static RideablesSettingsData get(ServerLevel level) {
@@ -27,6 +29,8 @@ public final class RideablesSettingsData extends SavedData {
     public int minimumSeats() { return minimumSeats; }
     public boolean trustedRidersCanBoard() { return trustedRidersCanBoard; }
     public boolean trustedRidersCanDrive() { return trustedRidersCanDrive; }
+    public boolean groundFallbackEnabled() { return groundFallbackEnabled; }
+    public double groundFallbackSpeed() { return groundFallbackSpeed; }
 
     public static String profileKey(String species, String form) {
         return normalize(species) + "/" + normalize(form);
@@ -90,11 +94,32 @@ public final class RideablesSettingsData extends SavedData {
         }
     }
 
+    public void setGroundFallbackEnabled(boolean enabled) {
+        if (groundFallbackEnabled != enabled) {
+            groundFallbackEnabled = enabled;
+            setDirty();
+        }
+    }
+
+    public void setGroundFallbackSpeed(double speed) {
+        if (!Double.isFinite(speed)) throw new IllegalArgumentException("Ground fallback speed must be finite");
+        double normalized = Math.max(0.02, Math.min(0.12, speed));
+        if (Double.compare(groundFallbackSpeed, normalized) != 0) {
+            groundFallbackSpeed = normalized;
+            setDirty();
+        }
+    }
+
     public static RideablesSettingsData load(CompoundTag tag, HolderLookup.Provider registries) {
         RideablesSettingsData data = new RideablesSettingsData();
         if (tag.contains("minimumSeats")) data.minimumSeats = Math.max(2, Math.min(16, tag.getInt("minimumSeats")));
         data.trustedRidersCanBoard = !tag.contains("trustedCanBoard") || tag.getBoolean("trustedCanBoard");
         data.trustedRidersCanDrive = !tag.contains("trustedCanDrive") || tag.getBoolean("trustedCanDrive");
+        data.groundFallbackEnabled = !tag.contains("groundFallbackEnabled") || tag.getBoolean("groundFallbackEnabled");
+        if (tag.contains("groundFallbackSpeed")) {
+            try { data.setGroundFallbackSpeed(tag.getDouble("groundFallbackSpeed")); }
+            catch (IllegalArgumentException ignored) { /* Keep the conservative default. */ }
+        }
         var profiles = tag.getList("seatOffsets", net.minecraft.nbt.Tag.TAG_COMPOUND);
         for (net.minecraft.nbt.Tag item : profiles) {
             var row = (CompoundTag) item;
@@ -118,6 +143,8 @@ public final class RideablesSettingsData extends SavedData {
         tag.putInt("minimumSeats", minimumSeats);
         tag.putBoolean("trustedCanBoard", trustedRidersCanBoard);
         tag.putBoolean("trustedCanDrive", trustedRidersCanDrive);
+        tag.putBoolean("groundFallbackEnabled", groundFallbackEnabled);
+        tag.putDouble("groundFallbackSpeed", groundFallbackSpeed);
         var profiles = new net.minecraft.nbt.ListTag();
         seatOffsets.forEach((profile, offsets) -> {
             CompoundTag row = new CompoundTag();

@@ -55,6 +55,14 @@ public final class BackseatRiders {
                     .then(Commands.argument("enabled", BoolArgumentType.bool())
                         .executes(ctx -> setTrustedDriving(ctx.getSource().getPlayerOrException(),
                             BoolArgumentType.getBool(ctx, "enabled")))))
+                .then(Commands.literal("ground-fallback")
+                    .then(Commands.argument("enabled", BoolArgumentType.bool())
+                        .executes(ctx -> setGroundFallback(ctx.getSource().getPlayerOrException(),
+                            BoolArgumentType.getBool(ctx, "enabled")))))
+                .then(Commands.literal("ground-speed")
+                    .then(Commands.argument("speed", DoubleArgumentType.doubleArg(0.02, 0.12))
+                        .executes(ctx -> setGroundFallbackSpeed(ctx.getSource().getPlayerOrException(),
+                            DoubleArgumentType.getDouble(ctx, "speed")))))
                 .then(Commands.literal("seat-offset")
                     .then(Commands.argument("species", StringArgumentType.word())
                         .then(Commands.argument("form", StringArgumentType.word())
@@ -139,7 +147,9 @@ public final class BackseatRiders {
         RideablesSettingsData settings = RideablesSettingsData.get(admin.serverLevel());
         admin.sendSystemMessage(Component.literal("Rideable settings: minimum seats=" + settings.minimumSeats()
             + ", trusted boarding=" + settings.trustedRidersCanBoard()
-            + ", trusted driving=" + settings.trustedRidersCanDrive()));
+            + ", trusted driving=" + settings.trustedRidersCanDrive()
+            + ", behaviorless ground fallback=" + settings.groundFallbackEnabled()
+            + ", ground speed=" + settings.groundFallbackSpeed()));
         return 1;
     }
 
@@ -166,6 +176,26 @@ public final class BackseatRiders {
     private static int setTrustedDriving(ServerPlayer admin, boolean enabled) {
         RideablesSettingsData.get(admin.serverLevel()).setTrustedRidersCanDrive(enabled);
         admin.sendSystemMessage(Component.literal("Trusted-rider driving is " + (enabled ? "enabled." : "disabled.")));
+        return 1;
+    }
+
+    private static int setGroundFallback(ServerPlayer admin, boolean enabled) {
+        RideablesSettingsData.get(admin.serverLevel()).setGroundFallbackEnabled(enabled);
+        if (!enabled) {
+            for (ServerPlayer rider : admin.getServer().getPlayerList().getPlayers()) {
+                if (rider.getVehicle() instanceof com.cobblemon.mod.common.entity.pokemon.PokemonEntity pokemon
+                        && !GroundRideEligibility.hasNativeRidingBehaviour(pokemon)) rider.stopRiding();
+            }
+        }
+        admin.sendSystemMessage(Component.literal("Behaviorless Pok�mon ground fallback is "
+            + (enabled ? "enabled." : "disabled; passengers on behaviorless Pok�mon were dismounted.")));
+        return 1;
+    }
+
+    private static int setGroundFallbackSpeed(ServerPlayer admin, double speed) {
+        RideablesSettingsData.get(admin.serverLevel()).setGroundFallbackSpeed(speed);
+        admin.sendSystemMessage(Component.literal("Behaviorless Pok�mon ground speed set to " + speed
+            + " blocks per tick (allowed range 0.02-0.12)."));
         return 1;
     }
 
