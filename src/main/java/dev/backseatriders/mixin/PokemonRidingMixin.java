@@ -3,6 +3,7 @@ package dev.backseatriders.mixin;
 import dev.backseatriders.RideableTrustData;
 import dev.backseatriders.GroundRideEligibility;
 import dev.backseatriders.PokemonSeatFallbackAccess;
+import dev.backseatriders.PokemonDriverHandoffAccess;
 import java.util.List;
 import java.util.Objects;
 import java.util.Optional;
@@ -26,14 +27,23 @@ import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
 import org.spongepowered.asm.mixin.injection.callback.CallbackInfoReturnable;
 
 @Mixin(targets = "com.cobblemon.mod.common.entity.pokemon.PokemonEntity", remap = false)
-public abstract class PokemonRidingMixin {
+public abstract class PokemonRidingMixin implements PokemonDriverHandoffAccess {
     @Unique private static final ThreadLocal<UUID> backseatriders$ownerUuid = new ThreadLocal<>();
     @Unique private static final EntityDataAccessor<Optional<UUID>> backseatriders$trustedDriver =
+        SynchedEntityData.defineId(PokemonEntity.class, EntityDataSerializers.OPTIONAL_UUID);
+    @Unique private static final EntityDataAccessor<Optional<UUID>> backseatriders$requestedDriver =
         SynchedEntityData.defineId(PokemonEntity.class, EntityDataSerializers.OPTIONAL_UUID);
 
     @Inject(method = "defineSynchedData", at = @At("TAIL"), remap = false)
     private void backseatriders$defineTrustedDriver(SynchedEntityData.Builder builder, CallbackInfo ci) {
         builder.define(backseatriders$trustedDriver, Optional.empty());
+        builder.define(backseatriders$requestedDriver, Optional.empty());
+    }
+
+    @Override
+    @Unique
+    public void backseatriders$requestDriver(Optional<UUID> driver) {
+        ((PokemonEntity) (Object) this).getEntityData().set(backseatriders$requestedDriver, driver);
     }
 
     @Redirect(method = "isRideableFor$lambda$0", at = @At(value = "INVOKE",
@@ -66,6 +76,21 @@ public abstract class PokemonRidingMixin {
     @Inject(method = "getControllingPassenger", at = @At("RETURN"), cancellable = true, remap = false)
     private void backseatriders$trustedDriver(CallbackInfoReturnable<LivingEntity> cir) {
         Entity pokemon = (Entity) (Object) this;
+        UUID requested = pokemon.getEntityData().get(backseatriders$requestedDriver).orElse(null);
+        if (requested != null) {
+            for (Entity passenger : pokemon.getPassengers()) {
+                if (!passenger.getUUID().equals(requested) || !(passenger instanceof LivingEntity living)) continue;
+                if (pokemon.level().isClientSide() || passenger instanceof ServerPlayer player
+                        && backseatriders$mayDrive((PokemonEntity) pokemon, player)) {
+                    cir.setReturnValue(living);
+                    if (!pokemon.level().isClientSide()) {
+                        pokemon.getEntityData().set(backseatriders$trustedDriver, Optional.of(requested));
+                    }
+                    return;
+                }
+            }
+            if (!pokemon.level().isClientSide()) pokemon.getEntityData().set(backseatriders$requestedDriver, Optional.empty());
+        }
         if (cir.getReturnValue() != null) {
             if (!pokemon.level().isClientSide()) pokemon.getEntityData().set(backseatriders$trustedDriver, Optional.empty());
             return;
@@ -95,6 +120,13 @@ public abstract class PokemonRidingMixin {
             }
         }
         pokemon.getEntityData().set(backseatriders$trustedDriver, Optional.empty());
+    }
+
+    @Unique
+    private static boolean backseatriders$mayDrive(PokemonEntity pokemon, ServerPlayer rider) {
+        return GroundRideEligibility.hasNativeRidingBehaviour(pokemon)
+            ? RideableTrustData.isOwner(pokemon, rider) || RideableTrustData.isTrustedDriver(pokemon, rider)
+            : GroundRideEligibility.mayDrive(pokemon, rider);
     }
 
     /** A behaviorless form gets the conservative ground controller only after all explicit safety gates pass. */

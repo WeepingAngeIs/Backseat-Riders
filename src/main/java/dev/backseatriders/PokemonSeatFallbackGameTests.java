@@ -62,7 +62,22 @@ public final class PokemonSeatFallbackGameTests {
             "An owned behaviorless Pok�mon should pass the safe ground fallback gate");
         helper.assertTrue(simulatedOwner.startRiding(ownedBulbasaur, true),
             "The owner could not board the behaviorless Pok�mon through vanilla mounting");
-        ownedBulbasaur.setOccupiedSeats(new HashMap<>(Map.of(ownedBulbasaur.getSeats().get(0), simulatedOwner)));
+        ServerPlayer trustedDriver = createConnectedTestPlayer(helper, level);
+        RideableTrustData trust = RideableTrustData.get(level);
+        trust.trust(simulatedOwner.getUUID(), trustedDriver.getUUID());
+        helper.assertTrue(trustedDriver.startRiding(ownedBulbasaur, true),
+            "A trusted rider could not board an available fallback seat");
+        ownedBulbasaur.setOccupiedSeats(new HashMap<>(Map.of(
+            ownedBulbasaur.getSeats().get(0), simulatedOwner,
+            ownedBulbasaur.getSeats().get(1), trustedDriver)));
+        ((PokemonDriverHandoffAccess) ownedBulbasaur).backseatriders$requestDriver(
+            java.util.Optional.of(trustedDriver.getUUID()));
+        helper.assertTrue(ownedBulbasaur.getControllingPassenger() == trustedDriver,
+            "An authorized onboard rider did not receive the explicit steering handoff");
+        trust.revoke(simulatedOwner.getUUID(), trustedDriver.getUUID());
+        helper.assertTrue(ownedBulbasaur.getControllingPassenger() != trustedDriver,
+            "Revoking trust must immediately end a requested steering handoff");
+        trustedDriver.stopRiding();
         ownedBulbasaur.setPos(30.0, 5.0, 30.0);
         ownedBulbasaur.setYRot(0.0F);
         ownedBulbasaur.setOnGround(true);

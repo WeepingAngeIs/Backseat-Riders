@@ -12,6 +12,7 @@ import net.minecraft.world.InteractionHand;
 import net.minecraft.world.InteractionResult;
 import net.minecraft.world.entity.animal.horse.AbstractHorse;
 import net.minecraft.world.entity.Entity;
+import com.cobblemon.mod.common.entity.pokemon.PokemonEntity;
 import net.neoforged.bus.api.SubscribeEvent;
 import net.neoforged.bus.api.IEventBus;
 import net.neoforged.neoforge.event.RegisterGameTestsEvent;
@@ -42,6 +43,12 @@ public final class BackseatRiders {
             .then(Commands.literal("revoke").then(Commands.argument("player", StringArgumentType.word())
                 .executes(ctx -> changeTrust(ctx.getSource().getPlayerOrException(), StringArgumentType.getString(ctx, "player"), false))))
             .then(Commands.literal("list").executes(ctx -> listTrusted(ctx.getSource().getPlayerOrException())))
+            .then(Commands.literal("handoff")
+                .then(Commands.argument("player", StringArgumentType.word())
+                    .executes(ctx -> handoffDriver(ctx.getSource().getPlayerOrException(),
+                        StringArgumentType.getString(ctx, "player"))))
+                .then(Commands.literal("reset")
+                    .executes(ctx -> resetDriverHandoff(ctx.getSource().getPlayerOrException()))))
             .then(Commands.literal("settings").requires(source -> source.hasPermission(2))
                 .then(Commands.literal("show").executes(ctx -> showSettings(ctx.getSource().getPlayerOrException())))
                 .then(Commands.literal("minimum-seats")
@@ -148,6 +155,46 @@ public final class BackseatRiders {
             .map(id -> owner.getServer().getProfileCache().get(id).map(profile -> profile.getName()).orElse(id.toString())).toList();
         owner.sendSystemMessage(Component.literal(names.isEmpty() ? "Your rideable party has no trusted riders." : "Trusted riders: " + String.join(", ", names)));
         return names.size();
+    }
+
+    private static int handoffDriver(ServerPlayer requester, String playerKey) {
+        if (!(requester.getVehicle() instanceof PokemonEntity pokemon)) {
+            requester.sendSystemMessage(Component.literal("You must be riding a Pok�mon to hand over steering."));
+            return 0;
+        }
+        if (!(RideableTrustData.isOwner(pokemon, requester)
+                || RideableTrustData.isTrustedDriver(pokemon, requester))) {
+            requester.sendSystemMessage(Component.literal("Only the owner or an authorized driver can hand over steering."));
+            return 0;
+        }
+        UUID targetId = resolvePlayerId(requester, playerKey);
+        ServerPlayer target = targetId == null ? null : requester.getServer().getPlayerList().getPlayer(targetId);
+        if (target == null || target.getVehicle() != pokemon) {
+            requester.sendSystemMessage(Component.literal("The selected player must be online and riding this Pok�mon."));
+            return 0;
+        }
+        boolean eligible = GroundRideEligibility.hasNativeRidingBehaviour(pokemon)
+            ? RideableTrustData.isOwner(pokemon, target) || RideableTrustData.isTrustedDriver(pokemon, target)
+            : GroundRideEligibility.mayDrive(pokemon, target);
+        if (!eligible) {
+            requester.sendSystemMessage(Component.literal("That rider is not authorized to drive this Pok�mon."));
+            return 0;
+        }
+        ((PokemonDriverHandoffAccess) pokemon).backseatriders$requestDriver(java.util.Optional.of(target.getUUID()));
+        requester.sendSystemMessage(Component.literal("Steering handed to " + target.getGameProfile().getName() + "."));
+        return 1;
+    }
+
+    private static int resetDriverHandoff(ServerPlayer requester) {
+        if (!(requester.getVehicle() instanceof PokemonEntity pokemon)
+                || !(RideableTrustData.isOwner(pokemon, requester)
+                    || RideableTrustData.isTrustedDriver(pokemon, requester))) {
+            requester.sendSystemMessage(Component.literal("You must be an authorized driver on a Pok�mon to reset steering."));
+            return 0;
+        }
+        ((PokemonDriverHandoffAccess) pokemon).backseatriders$requestDriver(java.util.Optional.empty());
+        requester.sendSystemMessage(Component.literal("Steering handoff cleared; the usual driver selection is restored."));
+        return 1;
     }
 
     private static int showSettings(ServerPlayer admin) {

@@ -5,6 +5,7 @@ Backseat Riders targets Minecraft 1.21.1, NeoForge 21.1.249, and Cobblemon 1.8.4
 ## Implemented
 
 - Owner-wide UUID trust through `/rideables trust <player|UUID>`, `/rideables revoke <player|UUID>`, and `/rideables list`. Owners can manage grants without mounting a Pokemon; an online revoked rider is dismounted from that owner's Pokemon or horse.
+- Explicit Pok�mon steering transfer through `/rideables handoff <player>` and `/rideables handoff reset`. The requester must be the owner or a currently authorized driver, and the target must be an authorized onboard rider. The server revalidates the requested driver on each control selection; revocation, dismount, or disabling trusted driving clears the handoff.
 - Cobblemon's native rideability checks remain in place. Trusted riders can board an owner's eligible sent-out Pokemon and may drive when configured. Server-side saved data stores trust and rideable settings.
 - A default minimum of two seats for owned behavior-backed Pok�mon and for behaviorless Pok�mon when the ground fallback is enabled. Native seat profiles with more seats are preserved. Empty native seat profiles and behaviorless forms use stable generated seats.
 - Behaviorless forms use a conservative owner/trusted ground controller by default, with no custom flight or swimming. Movement is limited to grounded horizontal input and runs through Cobblemon's existing travel/collision path. Server operators can opt out or adjust speed.
@@ -17,13 +18,13 @@ Backseat Riders targets Minecraft 1.21.1, NeoForge 21.1.249, and Cobblemon 1.8.4
 
 - GitHub Actions builds on Java 21 and runs JUnit policy, geometry, and editor-input validation tests, plus server GameTest coverage for global/per-form settings persistence.
 - A disposable NeoForge 21.1.249 server launches with Cobblemon 1.8.4 and checks mixin application.
-- A disposable GameTest checks one-seat Charizard fallback, two-seat Dewgong and six-seat Camerupt preservation, two generated ground seats for behaviorless Bulbasaur, opt-out, configured seat expansion, stable seat identity, server passenger positioning, and saved global/per-form settings and offsets.
+- A disposable GameTest checks one-seat Charizard fallback, two-seat Dewgong and six-seat Camerupt preservation, two generated ground seats for behaviorless Bulbasaur, opt-out, configured seat expansion, stable seat identity, server passenger positioning, saved global/per-form settings and offsets, a trusted passenger handoff, and immediate control loss after revocation. Its passengers are test doubles rather than two human clients.
 - A disposable Xvfb client startup check is included in the current workflow; it verifies client-side mixin loading, not riding visuals or real-player interaction.
 - The mod has not been installed in the live CurseForge instance, and no worlds or servers have been modified.
 
 ## Deferred or not verified
 
-Animated model-bone/locator binding and model-rendered 3D preview are not implemented; the editor previews generated offsets on a top-down diagram. Body fallback positions may need tuning for individual models. Behaviorless Pok�mon, including the installed Bulbasaur species data, now use only a configurable, conservative ground controller; they do not gain flying or swimming controls. Other friendly animals, passenger item/Poke Ball use, manual steering handoff, real multiplayer riding, battle/recall/portal/disconnect/resource-reload behavior, and scale/race cases are not verified.
+Animated model-bone/locator binding and model-rendered 3D preview are not implemented; the editor previews generated offsets on a top-down diagram. Body fallback positions may need tuning for individual models. Behaviorless Pok�mon, including the installed Bulbasaur species data, now use only a configurable, conservative ground controller; they do not gain flying or swimming controls. Other friendly animals, passenger item/Poke Ball use, real multiplayer riding, battle/recall/portal/disconnect/resource-reload behavior, and scale/race cases are not verified.
 
 ## Build and install
 
