@@ -27,7 +27,6 @@ neoForge {
         gameTestServer {
             gameDirectory = project.file('smoke-gametest')
             programArgument '--nogui'
-            setForceExit false
         }
     }
     mods { backseatriders { sourceSet sourceSets.main } }
