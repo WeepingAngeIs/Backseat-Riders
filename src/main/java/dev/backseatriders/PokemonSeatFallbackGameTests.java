@@ -132,7 +132,8 @@ public final class PokemonSeatFallbackGameTests {
         settings.setMinimumSeats(4);
         settings.setSeatCount(RideablesSettingsData.profileKey(charizard), 4);
         PokemonEntity expanded = createPokemon(helper, level, "charizard", 4, true);
-        helper.assertTrue(expanded.getSeats().stream().filter(seat -> SeatFallbackPosition.slot(seat) != null).count() == 4,
+        helper.assertTrue(expanded.getSeats().size() == 4
+                && expanded.getSeats().stream().filter(seat -> SeatFallbackPosition.slot(seat) != null).count() == 3,
             "Per-form seat minimum must add only seats beyond the native profile");
         settings.setMinimumSeats(2);
         settings.setGroundFallbackEnabled(false);
