@@ -9,7 +9,7 @@ import net.minecraft.network.protocol.common.custom.CustomPacketPayload;
 import net.minecraft.resources.ResourceLocation;
 import net.minecraft.server.level.ServerPlayer;
 import net.neoforged.api.distmarker.Dist;
-import net.neoforged.fml.DistExecutor;
+import net.neoforged.fml.loading.FMLEnvironment;
 import net.neoforged.neoforge.network.PacketDistributor;
 import net.neoforged.neoforge.network.event.RegisterPayloadHandlersEvent;
 import net.neoforged.neoforge.network.handling.IPayloadContext;
@@ -58,8 +58,16 @@ public final class SeatEditorPayloads {
     }
 
     private static void handleOpen(Open payload, IPayloadContext context) {
-        context.enqueueWork(() -> DistExecutor.unsafeRunWhenOn(Dist.CLIENT,
-            () -> () -> dev.backseatriders.client.SeatEditorScreen.open(payload)));
+        if (FMLEnvironment.dist != Dist.CLIENT) return;
+        context.enqueueWork(() -> {
+            try {
+                Class<?> screen = Class.forName("dev.backseatriders.client.SeatEditorScreen", true,
+                    SeatEditorPayloads.class.getClassLoader());
+                screen.getMethod("open", Open.class).invoke(null, payload);
+            } catch (ReflectiveOperationException failure) {
+                throw new IllegalStateException("Could not open the client seat editor", failure);
+            }
+        });
     }
 
     private static void handleSave(Save payload, IPayloadContext context) {
