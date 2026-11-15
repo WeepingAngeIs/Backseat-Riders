@@ -104,7 +104,7 @@ public abstract class PokemonSeatFallbackMixin implements PokemonSeatFallbackAcc
             pokemon.getEntityData().set(backseatriders$syncedGroundSpeed, (float) settings.groundFallbackSpeed());
             boolean mayGenerateSeats = nativeBehavior || groundFallback;
             profile = RideablesSettingsData.profileKey(pokemon);
-            for (int index = nativeSeats.size(); index < MAX_SEATS; index++) {
+            for (int index = nativeSeats.size(); index < SeatFallbackPosition.MAX_SEATS; index++) {
                 String locator = settings.seatLocator(profile, index);
                 if (locator != null) synchronizedLocators.putString(Integer.toString(index), locator);
             }
