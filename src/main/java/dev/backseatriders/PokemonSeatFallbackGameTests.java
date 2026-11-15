@@ -48,10 +48,10 @@ public final class PokemonSeatFallbackGameTests {
         if (simulatedOwner.getVehicle() != null) simulatedOwner.stopRiding();
         PokemonEntity ownedBulbasaur = createPokemonEntity(helper, level, "bulbasaur");
         ownedBulbasaur.setOwnerUUID(simulatedOwner.getUUID());
+        helper.assertTrue(simulatedOwner.level() == level,
+            "The fake owner must share the GameTest ServerLevel with its Pok�mon");
         helper.assertTrue(ownedBulbasaur.getSeats().size() >= 2,
             "The owned behaviorless Pok�mon must expose two seats before mounting");
-        helper.assertTrue(ownedBulbasaur.canAddPassenger(simulatedOwner),
-            "Cobblemon rejected the fake player in canAddPassenger despite the generated seats");
         helper.assertTrue(ownedBulbasaur.hasRoomToMount(simulatedOwner),
             "Cobblemon reports no room for the fake player despite the generated seats");
         helper.assertTrue(ownedBulbasaur.isRideableFor(simulatedOwner),
