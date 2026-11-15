@@ -57,11 +57,10 @@ jobs:
           opac_url=$(printf '%s' "$opac_json" | jq -r '.files[] | select(.primary == true) | .url' | head -n 1)
           test -n "$opac_url"
           curl -fsSL "$opac_url" -o smoke-run/mods/open-parties-and-claims-neoforge-1.21.1-0.33.0.jar
-          cp smoke-run/mods/open-parties-and-claims-neoforge-1.21.1-0.33.0.jar smoke-gametest/mods/
           cp smoke-run/mods/open-parties-and-claims-neoforge-1.21.1-0.33.0.jar smoke-client/mods/
       - name: Start disposable NeoForge server with Cobblemon 1.8.4
         env:
-          JAVA_TOOL_OPTIONS: -Dmixin.debug.verbose=true -Dmixin.debug.export=true
+          JAVA_TOOL_OPTIONS: -Dmixin.debug.verbose=true -Dmixin.debug.export=true -Dbackseatriders.requireOpacSmoke=true
         run: |
           mkdir -p smoke-run
           printf 'eula=true\\n' > smoke-run/eula.txt
@@ -82,11 +81,12 @@ jobs:
           grep -q 'PokemonSeatFallbackMixin' server-smoke.log
           grep -q 'HorseBackseatMixin' server-smoke.log
           grep -q 'Open Parties and Claims 0.33.0' server-smoke.log
+          grep -q 'OPAC_SMOKE_OK' server-smoke.log
           kill "$server_pid" 2>/dev/null || true
           wait "$server_pid" || true
       - name: Run server-side Cobblemon GameTest integration
         env:
-          JAVA_TOOL_OPTIONS: -Dmixin.debug.verbose=true -Dmixin.debug.export=true -Dbackseatriders.requireOpacSmoke=true
+          JAVA_TOOL_OPTIONS: -Dmixin.debug.verbose=true -Dmixin.debug.export=true
         run: |
           mkdir -p smoke-gametest
           printf 'eula=true\\n' > smoke-gametest/eula.txt
