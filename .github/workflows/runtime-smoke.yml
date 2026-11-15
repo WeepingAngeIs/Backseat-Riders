@@ -81,7 +81,10 @@ jobs:
           grep -q 'PokemonSeatFallbackMixin' server-smoke.log
           grep -q 'HorseBackseatMixin' server-smoke.log
           grep -q 'Open Parties and Claims 0.33.0' server-smoke.log
-          grep -q 'OPAC_SMOKE_OK' server-smoke.log
+          if ! grep -q 'OPAC_SMOKE_OK' server-smoke.log; then
+            cat server-smoke.log
+            exit 1
+          fi
           kill "$server_pid" 2>/dev/null || true
           wait "$server_pid" || true
       - name: Run server-side Cobblemon GameTest integration
