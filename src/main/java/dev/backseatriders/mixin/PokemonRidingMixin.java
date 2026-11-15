@@ -79,7 +79,7 @@ public abstract class PokemonRidingMixin {
             return;
         }
         for (Entity passenger : pokemon.getPassengers()) {
-            if (passenger instanceof ServerPlayer player && RideableTrustData.isTrusted(pokemon, player)) {
+            if (passenger instanceof ServerPlayer player && RideableTrustData.isTrustedDriver(pokemon, player)) {
                 pokemon.getEntityData().set(backseatriders$trustedDriver, Optional.of(player.getUUID()));
                 cir.setReturnValue(player);
                 return;
@@ -88,4 +88,5 @@ public abstract class PokemonRidingMixin {
         pokemon.getEntityData().set(backseatriders$trustedDriver, Optional.empty());
     }
 }
+
 
