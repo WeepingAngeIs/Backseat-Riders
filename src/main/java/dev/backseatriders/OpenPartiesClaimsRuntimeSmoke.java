@@ -45,6 +45,7 @@ public final class OpenPartiesClaimsRuntimeSmoke {
         if (!OpenPartiesClaimsProtection.isAvailable()) {
             throw new IllegalStateException("OPAC smoke was requested but Open Parties and Claims is absent");
         }
+        System.getLogger("BackseatRiders/OPAC").log(System.Logger.Level.INFO, "OPAC_SMOKE_START");
         try {
             exercise(server);
             if (ClaimProtectionDecision.denyMount(false, false, true)
