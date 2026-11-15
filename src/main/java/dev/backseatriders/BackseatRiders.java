@@ -152,7 +152,6 @@ public final class BackseatRiders {
         boolean trusted = !owner.equals(rider.getUUID()) && RideableTrustData.isTrustedOwner(owner, rider);
         if (!FriendlyAnimalRidePolicy.mayMount(true, owners.isRegistered(animal), true, true,
                 animal.isAlive(), animal.isRemoved(), animal.getPassengers().size(), owner, rider.getUUID(), trusted)) return;
-        if (OpenPartiesClaimsProtection.deniesMount(rider, animal, event.getHand())) return;
         if (FriendlyAnimalMountAttempt.startRiding(animal, rider)) {
             event.setCanceled(true);
             event.setCancellationResult(InteractionResult.CONSUME);

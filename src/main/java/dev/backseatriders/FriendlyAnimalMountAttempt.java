@@ -1,6 +1,7 @@
 package dev.backseatriders;
 
 import net.minecraft.server.level.ServerPlayer;
+import net.minecraft.world.InteractionHand;
 import net.minecraft.world.entity.Entity;
 
 /** Scopes passenger admission to the last-priority, non-canceled interaction handler. */
@@ -10,6 +11,7 @@ public final class FriendlyAnimalMountAttempt {
     private FriendlyAnimalMountAttempt() {}
 
     public static boolean startRiding(Entity animal, ServerPlayer rider) {
+        if (OpenPartiesClaimsProtection.deniesMount(rider, animal, InteractionHand.MAIN_HAND)) return false;
         Attempt previous = CURRENT.get();
         CURRENT.set(new Attempt(animal, rider));
         try {

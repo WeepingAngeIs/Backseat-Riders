@@ -20,12 +20,16 @@ public final class OpenPartiesClaimsProtection {
 
     private OpenPartiesClaimsProtection() {}
 
+    public static boolean isAvailable() {
+        return ModList.get().isLoaded(MOD_ID);
+    }
+
     /**
      * Returns true when OPAC denies this mount interaction. If OPAC is present but its API
      * cannot be called, mounting fails closed rather than bypassing unknown claim rules.
      */
     public static boolean deniesMount(ServerPlayer rider, Entity animal, InteractionHand hand) {
-        if (!ModList.get().isLoaded(MOD_ID)) return false;
+        if (!isAvailable()) return false;
         boolean protectedAction;
         try {
             MinecraftServer server = rider.getServer();

@@ -25,6 +25,18 @@ jobs:
           cobblemon_jar=$(find "$HOME/.gradle/caches/modules-2/files-2.1" -path '*/MdwFAVRL/xsVHrAsY/*.jar' -print -quit)
           test -n "$cobblemon_jar"
           echo "Cobblemon runtime: $cobblemon_jar"
+          for class in \
+            com.cobblemon.mod.common.client.entity.PokemonClientDelegate \
+            com.cobblemon.mod.common.client.render.pokemon.PokemonRenderer \
+            com.cobblemon.mod.common.client.render.models.blockbench.LocatorAccess \
+            com.cobblemon.mod.common.client.render.models.blockbench.LocatorBone \
+            com.cobblemon.mod.common.client.render.models.blockbench.pokemon.PokemonPosableModel \
+            com.cobblemon.mod.common.client.render.models.blockbench.pokemon.PosablePokemonEntityModel; do
+            echo "--- $class ---"
+            javap -classpath "$cobblemon_jar" -p "$class"
+          done
+          echo "--- client seat locator and position bytecode ---"
+          javap -classpath "$cobblemon_jar" -c -p com.cobblemon.mod.common.client.entity.PokemonClientDelegate | awk '/^  (public|protected|private)/ && index($0, "(") > 0 { keep = (index($0, "getSeatLocator(") || index($0, "positionRider(")) } keep { print }'
           javap -classpath "$cobblemon_jar" -p com.cobblemon.mod.common.entity.pokemon.PokemonEntity
           javap -classpath "$cobblemon_jar" -c -p com.cobblemon.mod.common.entity.pokemon.PokemonEntity | awk '/^  (public|protected|private)/ && index($0, "(") > 0 { keep = (index($0, "isRideableFor(") || index($0, "tryRidingPokemon(") || index($0, "getRideProp(") || index($0, "travel(") || index($0, "getRiddenInput(") || index($0, "getRiddenSpeed(") || index($0, "getControllingPassenger(") || index($0, "canAddPassenger(") || index($0, "addPassenger(") || index($0, "tickRidden(")) } keep { print }'
           javap -classpath "$cobblemon_jar" -p com.cobblemon.mod.common.entity.pokemon.PokemonServerDelegate
@@ -40,6 +52,12 @@ jobs:
           curl -fsSL "$url" -o smoke-run/mods/kotlinforforge-5.12.0-all.jar
           cp smoke-run/mods/kotlinforforge-5.12.0-all.jar smoke-gametest/mods/
           cp smoke-run/mods/kotlinforforge-5.12.0-all.jar smoke-client/mods/
+          opac_json=$(curl -fsSL https://api.modrinth.com/v2/version/yWmXD7GW)
+          opac_url=$(printf '%s' "$opac_json" | jq -r '.files[] | select(.primary == true) | .url' | head -n 1)
+          test -n "$opac_url"
+          curl -fsSL "$opac_url" -o smoke-run/mods/open-parties-and-claims-neoforge-1.21.1-0.33.0.jar
+          cp smoke-run/mods/open-parties-and-claims-neoforge-1.21.1-0.33.0.jar smoke-gametest/mods/
+          cp smoke-run/mods/open-parties-and-claims-neoforge-1.21.1-0.33.0.jar smoke-client/mods/
       - name: Start disposable NeoForge server with Cobblemon 1.8.4
         env:
           JAVA_TOOL_OPTIONS: -Dmixin.debug.verbose=true -Dmixin.debug.export=true
