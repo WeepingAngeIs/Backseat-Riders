@@ -14,7 +14,6 @@ import net.neoforged.fml.common.Mod;
 import net.neoforged.neoforge.common.NeoForge;
 import net.neoforged.neoforge.event.RegisterCommandsEvent;
 import net.neoforged.neoforge.event.entity.player.PlayerInteractEvent;
-import net.minecraft.commands.arguments.StringArgumentType;
 
 @Mod(BackseatRiders.MOD_ID)
 public final class BackseatRiders {
