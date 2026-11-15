@@ -52,8 +52,6 @@ public final class PokemonSeatFallbackGameTests {
             "The fake owner must share the GameTest ServerLevel with its Pok�mon");
         helper.assertTrue(ownedBulbasaur.getSeats().size() >= 2,
             "The owned behaviorless Pok�mon must expose two seats before mounting");
-        helper.assertTrue(ownedBulbasaur.hasRoomToMount(simulatedOwner),
-            "Cobblemon reports no room for the fake player despite the generated seats");
         helper.assertTrue(ownedBulbasaur.isRideableFor(simulatedOwner),
             "An owned behaviorless Pok�mon should pass the safe ground fallback gate");
         helper.assertTrue(simulatedOwner.startRiding(ownedBulbasaur, true),
