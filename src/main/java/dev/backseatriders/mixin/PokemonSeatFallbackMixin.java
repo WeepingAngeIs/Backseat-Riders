@@ -11,6 +11,7 @@ import java.util.List;
 import net.minecraft.network.syncher.EntityDataAccessor;
 import net.minecraft.network.syncher.EntityDataSerializers;
 import net.minecraft.network.syncher.SynchedEntityData;
+import net.minecraft.nbt.CompoundTag;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.world.entity.Entity;
 import org.spongepowered.asm.mixin.Mixin;
@@ -21,13 +22,28 @@ import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
 import org.spongepowered.asm.mixin.injection.callback.CallbackInfoReturnable;
 
 @Mixin(value = PokemonEntity.class, remap = false)
-public abstract class PokemonSeatFallbackMixin {
+public abstract class PokemonSeatFallbackMixin implements PokemonSeatFallbackAccess {
     @Unique private static final EntityDataAccessor<Integer> backseatriders$syncedSeatCount =
         SynchedEntityData.defineId(PokemonEntity.class, EntityDataSerializers.INT);
+    @Unique private static final EntityDataAccessor<CompoundTag> backseatriders$syncedSeatOffsets =
+        SynchedEntityData.defineId(PokemonEntity.class, EntityDataSerializers.COMPOUND_TAG);
 
     @Inject(method = "defineSynchedData", at = @At("TAIL"), remap = false)
     private void backseatriders$defineSeatCount(SynchedEntityData.Builder builder, CallbackInfo ci) {
         builder.define(backseatriders$syncedSeatCount, 0);
+        builder.define(backseatriders$syncedSeatOffsets, new CompoundTag());
+    }
+
+    @Override
+    @Unique
+    public CompoundTag backseatriders$getSeatOffsets() {
+        return ((PokemonEntity) (Object) this).getEntityData().get(backseatriders$syncedSeatOffsets);
+    }
+
+    @Override
+    @Unique
+    public void backseatriders$setSeatOffsets(CompoundTag offsets) {
+        ((PokemonEntity) (Object) this).getEntityData().set(backseatriders$syncedSeatOffsets, offsets);
     }
 
     @Inject(method = "getSeats", at = @At("RETURN"), cancellable = true, remap = false)

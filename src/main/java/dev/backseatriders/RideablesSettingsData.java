@@ -4,6 +4,10 @@ import net.minecraft.core.HolderLookup;
 import net.minecraft.nbt.CompoundTag;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.world.level.saveddata.SavedData;
+import com.cobblemon.mod.common.entity.pokemon.PokemonEntity;
+import java.util.HashMap;
+import java.util.Locale;
+import java.util.Map;
 
 /** Server-owned settings that affect trusted access and generated seats. */
 public final class RideablesSettingsData extends SavedData {
@@ -14,6 +18,7 @@ public final class RideablesSettingsData extends SavedData {
     private int minimumSeats = 2;
     private boolean trustedRidersCanBoard = true;
     private boolean trustedRidersCanDrive = true;
+    private final Map<String, Map<Integer, Offset>> seatOffsets = new HashMap<>();
 
     public static RideablesSettingsData get(ServerLevel level) {
         return level.getServer().overworld().getDataStorage().computeIfAbsent(FACTORY, KEY);
@@ -22,6 +27,46 @@ public final class RideablesSettingsData extends SavedData {
     public int minimumSeats() { return minimumSeats; }
     public boolean trustedRidersCanBoard() { return trustedRidersCanBoard; }
     public boolean trustedRidersCanDrive() { return trustedRidersCanDrive; }
+
+    public static String profileKey(String species, String form) {
+        return normalize(species) + "/" + normalize(form);
+    }
+
+    public static String profileKey(PokemonEntity pokemon) {
+        return profileKey(pokemon.getPokemon().getSpecies().getName(), pokemon.getPokemon().getForm().getName());
+    }
+
+    private static String normalize(String value) {
+        return value.trim().toLowerCase(Locale.ROOT).replace(' ', '-');
+    }
+
+    public Offset seatOffset(String profile, int seatIndex) {
+        return seatOffsets.getOrDefault(profile, Map.of()).get(seatIndex);
+    }
+
+    public boolean setSeatOffset(String profile, int seatIndex, double x, double y, double z) {
+        if (seatIndex < 0 || seatIndex >= 16) throw new IllegalArgumentException("Seat index must be 0-15");
+        Offset offset = new Offset(clampOffset(x), clampOffset(y), clampOffset(z));
+        Map<Integer, Offset> offsets = seatOffsets.computeIfAbsent(profile, ignored -> new HashMap<>());
+        if (offset.equals(offsets.put(seatIndex, offset))) return false;
+        setDirty();
+        return true;
+    }
+
+    public boolean clearSeatOffset(String profile, int seatIndex) {
+        Map<Integer, Offset> offsets = seatOffsets.get(profile);
+        if (offsets == null || offsets.remove(seatIndex) == null) return false;
+        if (offsets.isEmpty()) seatOffsets.remove(profile);
+        setDirty();
+        return true;
+    }
+
+    private static double clampOffset(double value) {
+        if (!Double.isFinite(value)) throw new IllegalArgumentException("Seat offsets must be finite");
+        return Math.max(-4.0, Math.min(4.0, value));
+    }
+
+    public record Offset(double x, double y, double z) {}
 
     public void setMinimumSeats(int seats) {
         int normalized = Math.max(2, Math.min(16, seats));
@@ -50,6 +95,21 @@ public final class RideablesSettingsData extends SavedData {
         if (tag.contains("minimumSeats")) data.minimumSeats = Math.max(2, Math.min(16, tag.getInt("minimumSeats")));
         data.trustedRidersCanBoard = !tag.contains("trustedCanBoard") || tag.getBoolean("trustedCanBoard");
         data.trustedRidersCanDrive = !tag.contains("trustedCanDrive") || tag.getBoolean("trustedCanDrive");
+        var profiles = tag.getList("seatOffsets", net.minecraft.nbt.Tag.TAG_COMPOUND);
+        for (net.minecraft.nbt.Tag item : profiles) {
+            var row = (CompoundTag) item;
+            String profile = row.getString("profile");
+            var seats = row.getList("seats", net.minecraft.nbt.Tag.TAG_COMPOUND);
+            for (net.minecraft.nbt.Tag seatTag : seats) {
+                var seat = (CompoundTag) seatTag;
+                int index = seat.getInt("index");
+                if (profile.isBlank() || index < 0 || index >= 16) continue;
+                try {
+                    data.seatOffsets.computeIfAbsent(profile, ignored -> new HashMap<>()).put(index,
+                        new Offset(clampOffset(seat.getDouble("x")), clampOffset(seat.getDouble("y")), clampOffset(seat.getDouble("z"))));
+                } catch (IllegalArgumentException ignored) { /* Skip invalid values. */ }
+            }
+        }
         return data;
     }
 
@@ -58,6 +118,23 @@ public final class RideablesSettingsData extends SavedData {
         tag.putInt("minimumSeats", minimumSeats);
         tag.putBoolean("trustedCanBoard", trustedRidersCanBoard);
         tag.putBoolean("trustedCanDrive", trustedRidersCanDrive);
+        var profiles = new net.minecraft.nbt.ListTag();
+        seatOffsets.forEach((profile, offsets) -> {
+            CompoundTag row = new CompoundTag();
+            row.putString("profile", profile);
+            var seats = new net.minecraft.nbt.ListTag();
+            offsets.forEach((index, offset) -> {
+                CompoundTag seat = new CompoundTag();
+                seat.putInt("index", index);
+                seat.putDouble("x", offset.x());
+                seat.putDouble("y", offset.y());
+                seat.putDouble("z", offset.z());
+                seats.add(seat);
+            });
+            row.put("seats", seats);
+            profiles.add(row);
+        });
+        tag.put("seatOffsets", profiles);
         return tag;
     }
 }

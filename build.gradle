@@ -18,7 +18,10 @@ neoForge {
     version = '21.1.249'
     runs {
         configureEach { systemProperty 'neoforge.enabledGameTestNamespaces', 'backseatriders' }
-        client { client() }
+        client {
+            client()
+            gameDirectory = project.file('smoke-client')
+        }
         server {
             server()
             gameDirectory = project.file('smoke-run')
@@ -48,3 +51,4 @@ tasks.register('resolveRuntimeClasspath') {
 tasks.withType(JavaCompile).configureEach { options.encoding = 'UTF-8'; options.release = 21 }
 tasks.withType(Test).configureEach { useJUnitPlatform() }
 tasks.jar { manifest { attributes('MixinConfigs': 'backseatriders.mixins.json') } }
+

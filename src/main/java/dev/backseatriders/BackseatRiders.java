@@ -3,6 +3,7 @@ package dev.backseatriders;
 import java.util.UUID;
 import net.minecraft.commands.Commands;
 import com.mojang.brigadier.arguments.BoolArgumentType;
+import com.mojang.brigadier.arguments.DoubleArgumentType;
 import com.mojang.brigadier.arguments.IntegerArgumentType;
 import com.mojang.brigadier.arguments.StringArgumentType;
 import net.minecraft.network.chat.Component;
@@ -53,7 +54,29 @@ public final class BackseatRiders {
                 .then(Commands.literal("trusted-drive")
                     .then(Commands.argument("enabled", BoolArgumentType.bool())
                         .executes(ctx -> setTrustedDriving(ctx.getSource().getPlayerOrException(),
-                            BoolArgumentType.getBool(ctx, "enabled")))))));
+                            BoolArgumentType.getBool(ctx, "enabled")))))
+                .then(Commands.literal("seat-offset")
+                    .then(Commands.argument("species", StringArgumentType.word())
+                        .then(Commands.argument("form", StringArgumentType.word())
+                            .then(Commands.argument("seat", IntegerArgumentType.integer(0, 15))
+                                .then(Commands.argument("x", DoubleArgumentType.doubleArg(-4.0, 4.0))
+                                    .then(Commands.argument("y", DoubleArgumentType.doubleArg(-4.0, 4.0))
+                                        .then(Commands.argument("z", DoubleArgumentType.doubleArg(-4.0, 4.0))
+                                            .executes(ctx -> setSeatOffset(ctx.getSource().getPlayerOrException(),
+                                                StringArgumentType.getString(ctx, "species"),
+                                                StringArgumentType.getString(ctx, "form"),
+                                                IntegerArgumentType.getInteger(ctx, "seat"),
+                                                DoubleArgumentType.getDouble(ctx, "x"),
+                                                DoubleArgumentType.getDouble(ctx, "y"),
+                                                DoubleArgumentType.getDouble(ctx, "z")))))))))
+                .then(Commands.literal("clear-seat-offset")
+                    .then(Commands.argument("species", StringArgumentType.word())
+                        .then(Commands.argument("form", StringArgumentType.word())
+                            .then(Commands.argument("seat", IntegerArgumentType.integer(0, 15))
+                                .executes(ctx -> clearSeatOffset(ctx.getSource().getPlayerOrException(),
+                                    StringArgumentType.getString(ctx, "species"),
+                                    StringArgumentType.getString(ctx, "form"),
+                                    IntegerArgumentType.getInteger(ctx, "seat"))))))))));
     }
 
     @SubscribeEvent
@@ -144,6 +167,23 @@ public final class BackseatRiders {
         RideablesSettingsData.get(admin.serverLevel()).setTrustedRidersCanDrive(enabled);
         admin.sendSystemMessage(Component.literal("Trusted-rider driving is " + (enabled ? "enabled." : "disabled.")));
         return 1;
+    }
+
+    private static int setSeatOffset(ServerPlayer admin, String species, String form, int seat,
+                                    double x, double y, double z) {
+        String profile = RideablesSettingsData.profileKey(species, form);
+        RideablesSettingsData.get(admin.serverLevel()).setSeatOffset(profile, seat, x, y, z);
+        admin.sendSystemMessage(Component.literal("Generated seat " + seat + " offset for " + profile
+            + " set to local coordinates " + x + ", " + y + ", " + z + "."));
+        return 1;
+    }
+
+    private static int clearSeatOffset(ServerPlayer admin, String species, String form, int seat) {
+        String profile = RideablesSettingsData.profileKey(species, form);
+        boolean changed = RideablesSettingsData.get(admin.serverLevel()).clearSeatOffset(profile, seat);
+        admin.sendSystemMessage(Component.literal(changed ? "Generated seat offset cleared for " + profile + "."
+            : "No custom generated seat offset was set for " + profile + "."));
+        return changed ? 1 : 0;
     }
 }
 

@@ -69,6 +69,14 @@ public final class PokemonSeatFallbackGameTests {
             "Fallback passenger position must be finite");
         helper.assertTrue(actual.distanceToSqr(new Vec3(expected.x(), expected.y(), expected.z())) < 1.0E-8,
             "Server delegate did not apply the generated body-relative position");
+        settings.setSeatOffset(RideablesSettingsData.profileKey(charizard),
+            SeatFallbackPosition.slot(fallback).index(), 0.5, 1.25, -0.75);
+        charizard.positionRider(passenger);
+        Vec3 profiled = passenger.position();
+        helper.assertTrue(profiled.distanceToSqr(new Vec3(11.25, 21.25, -7.5)) < 1.0E-6,
+            "Per-form generated-seat offset did not rotate with the Pok�mon yaw");
+        settings.clearSeatOffset(RideablesSettingsData.profileKey(charizard),
+            SeatFallbackPosition.slot(fallback).index());
         helper.assertTrue(dewgong.getSeats().size() == 2,
             "Native two-seat species must keep its original seat count");
         helper.assertTrue(camerupt.getSeats().size() == 6,

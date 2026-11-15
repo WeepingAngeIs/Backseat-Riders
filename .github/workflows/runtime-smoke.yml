@@ -29,7 +29,7 @@ jobs:
           javap -classpath "$cobblemon_jar" -p com.cobblemon.mod.common.entity.pokemon.PokemonServerDelegate
       - name: Add the installed KotlinForForge provider to disposable runs
         run: |
-          mkdir -p smoke-run/mods smoke-gametest/mods
+          mkdir -p smoke-run/mods smoke-gametest/mods smoke-client/mods
           versions=$(curl -fsSLG \
             --data-urlencode 'loaders=["neoforge"]' \
             --data-urlencode 'game_versions=["1.21.1"]' \
@@ -38,6 +38,7 @@ jobs:
           test -n "$url"
           curl -fsSL "$url" -o smoke-run/mods/kotlinforforge-5.12.0-all.jar
           cp smoke-run/mods/kotlinforforge-5.12.0-all.jar smoke-gametest/mods/
+          cp smoke-run/mods/kotlinforforge-5.12.0-all.jar smoke-client/mods/
       - name: Start disposable NeoForge server with Cobblemon 1.8.4
         env:
           JAVA_TOOL_OPTIONS: -Dmixin.debug.verbose=true -Dmixin.debug.export=true
@@ -77,6 +78,22 @@ jobs:
           grep -q 'PokemonSeatFallbackServerMixin' game-test.log
           grep -q '1 tests are now running' game-test.log
           grep -q 'All 1 required tests passed' game-test.log
+      - name: Start isolated client under Xvfb
+        env:
+          JAVA_TOOL_OPTIONS: -Dmixin.debug.verbose=true
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y xvfb
+          set +e
+          timeout --signal=TERM 240s xvfb-run -a gradle --no-daemon runClient --stacktrace > client-smoke.log 2>&1
+          client_status=$?
+          set -e
+          if [ "$client_status" -ne 124 ] && [ "$client_status" -ne 143 ]; then
+            cat client-smoke.log
+            exit "$client_status"
+          fi
+          grep -E 'PokemonSeatFallbackMixin|Minecraft 1.21.1|Minecraft started' client-smoke.log
+          grep -q 'PokemonSeatFallbackMixin' client-smoke.log
       - name: Preserve disposable server and GameTest logs
         if: always()
         uses: actions/upload-artifact@v4
@@ -85,4 +102,6 @@ jobs:
           path: |
             server-smoke.log
             game-test.log
+            client-smoke.log
           if-no-files-found: ignore
+
