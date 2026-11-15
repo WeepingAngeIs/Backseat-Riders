@@ -109,13 +109,13 @@ public final class OpenPartiesClaimsRuntimeSmoke {
         Object ownerConfig = Class.forName(CONFIG_MANAGER_API, true, loader)
             .getMethod("getLoadedConfig", UUID.class).invoke(configManager, owner.getUUID());
         Object groups = Class.forName(CONFIG_API, true, loader).getMethod("getPlayerGroups").invoke(ownerConfig);
-        String groupId = "bsr-smoke-trusted";
+        String groupId = "bsr_smoke_trusted";
         Object addResult = Class.forName(GROUP_MANAGER_API, true, loader)
             .getMethod("addCustom", String.class).invoke(groups, groupId);
         @SuppressWarnings("unchecked")
         Optional<Object> groupResult = ((Either<Object, ?>) addResult).left();
         Object trustedGroup = groupResult.orElseThrow(
-            () -> new AssertionError("Could not create OPAC smoke trusted-player group"));
+            () -> new AssertionError("Could not create OPAC smoke trusted-player group: " + addResult));
         Class.forName(GROUP_API, true, loader).getMethod("includeMember", UUID.class, String.class)
             .invoke(trustedGroup, trusted.getUUID(), null);
 
