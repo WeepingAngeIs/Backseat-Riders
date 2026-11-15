@@ -25,19 +25,16 @@ jobs:
           cobblemon_jar=$(find "$HOME/.gradle/caches/modules-2/files-2.1" -path '*/MdwFAVRL/xsVHrAsY/*.jar' -print -quit)
           test -n "$cobblemon_jar"
           echo "Cobblemon runtime: $cobblemon_jar"
+          echo "--- installed locator/model class candidates ---"
+          jar tf "$cobblemon_jar" | grep -Ei '(locator|posable|pokemonrenderer|/Species.class|/Pokemon.class|/Form.class)' | head -n 120 || true
           for class in \
             com.cobblemon.mod.common.client.entity.PokemonClientDelegate \
             com.cobblemon.mod.common.client.render.pokemon.PokemonRenderer \
-            com.cobblemon.mod.common.client.render.models.blockbench.LocatorAccess \
-            com.cobblemon.mod.common.client.render.models.blockbench.LocatorBone \
-            com.cobblemon.mod.common.client.render.models.blockbench.pokemon.PokemonPosableModel \
-            com.cobblemon.mod.common.client.render.models.blockbench.pokemon.PosablePokemonEntityModel \
-            com.cobblemon.mod.common.client.render.models.blockbench.PosableState \
             com.cobblemon.mod.common.pokemon.Species \
             com.cobblemon.mod.common.pokemon.Pokemon \
             com.cobblemon.mod.common.pokemon.Form; do
             echo "--- $class ---"
-            javap -classpath "$cobblemon_jar" -p "$class"
+            if javap -classpath "$cobblemon_jar" -p "$class"; then :; else echo "MISSING_CLASS $class"; fi
           done
           echo "--- client seat locator and position bytecode ---"
           javap -classpath "$cobblemon_jar" -c -p com.cobblemon.mod.common.client.entity.PokemonClientDelegate | awk '/^  (public|protected|private)/ && index($0, "(") > 0 { keep = (index($0, "getSeatLocator(") || index($0, "positionRider(")) } keep { print }'
