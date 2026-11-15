@@ -21,6 +21,7 @@ public final class RideablesSettingsData extends SavedData {
     private boolean groundFallbackEnabled = true;
     private double groundFallbackSpeed = 0.06;
     private final Map<String, Map<Integer, Offset>> seatOffsets = new HashMap<>();
+    private final Map<String, Integer> profileSeatCounts = new HashMap<>();
 
     public static RideablesSettingsData get(ServerLevel level) {
         return level.getServer().overworld().getDataStorage().computeIfAbsent(FACTORY, KEY);
@@ -46,6 +47,48 @@ public final class RideablesSettingsData extends SavedData {
 
     public Offset seatOffset(String profile, int seatIndex) {
         return seatOffsets.getOrDefault(profile, Map.of()).get(seatIndex);
+    }
+
+    public int seatCount(String profile) {
+        return profileSeatCounts.getOrDefault(profile, minimumSeats);
+    }
+
+    public CompoundTag seatOffsetsTag(String profile) {
+        CompoundTag result = new CompoundTag();
+        seatOffsets.getOrDefault(profile, Map.of()).forEach((index, offset) -> {
+            CompoundTag row = new CompoundTag();
+            row.putDouble("x", offset.x());
+            row.putDouble("y", offset.y());
+            row.putDouble("z", offset.z());
+            result.put(Integer.toString(index), row);
+        });
+        return result;
+    }
+
+    public boolean setSeatCount(String profile, int count) {
+        if (count < 2 || count > 16) throw new IllegalArgumentException("Seat count must be 2-16");
+        if (profileSeatCounts.getOrDefault(profile, minimumSeats) == count
+                && profileSeatCounts.containsKey(profile)) return false;
+        profileSeatCounts.put(profile, count);
+        setDirty();
+        return true;
+    }
+
+    public boolean replaceSeatOffsets(String profile, CompoundTag requested) {
+        Map<Integer, Offset> replacement = new HashMap<>();
+        for (int index = 0; index < 16; index++) {
+            String key = Integer.toString(index);
+            if (!requested.contains(key, net.minecraft.nbt.Tag.TAG_COMPOUND)) continue;
+            CompoundTag row = requested.getCompound(key);
+            replacement.put(index, new Offset(clampOffset(row.getDouble("x")),
+                clampOffset(row.getDouble("y")), clampOffset(row.getDouble("z"))));
+        }
+        Map<Integer, Offset> previous = seatOffsets.getOrDefault(profile, Map.of());
+        if (previous.equals(replacement)) return false;
+        if (replacement.isEmpty()) seatOffsets.remove(profile);
+        else seatOffsets.put(profile, replacement);
+        setDirty();
+        return true;
     }
 
     public boolean setSeatOffset(String profile, int seatIndex, double x, double y, double z) {
@@ -124,6 +167,10 @@ public final class RideablesSettingsData extends SavedData {
         for (net.minecraft.nbt.Tag item : profiles) {
             var row = (CompoundTag) item;
             String profile = row.getString("profile");
+            if (row.contains("count")) {
+                int count = row.getInt("count");
+                if (!profile.isBlank() && count >= 2 && count <= 16) data.profileSeatCounts.put(profile, count);
+            }
             var seats = row.getList("seats", net.minecraft.nbt.Tag.TAG_COMPOUND);
             for (net.minecraft.nbt.Tag seatTag : seats) {
                 var seat = (CompoundTag) seatTag;
@@ -149,6 +196,7 @@ public final class RideablesSettingsData extends SavedData {
         seatOffsets.forEach((profile, offsets) -> {
             CompoundTag row = new CompoundTag();
             row.putString("profile", profile);
+            if (profileSeatCounts.containsKey(profile)) row.putInt("count", profileSeatCounts.get(profile));
             var seats = new net.minecraft.nbt.ListTag();
             offsets.forEach((index, offset) -> {
                 CompoundTag seat = new CompoundTag();
@@ -159,6 +207,14 @@ public final class RideablesSettingsData extends SavedData {
                 seats.add(seat);
             });
             row.put("seats", seats);
+            profiles.add(row);
+        });
+        profileSeatCounts.forEach((profile, count) -> {
+            if (seatOffsets.containsKey(profile)) return;
+            CompoundTag row = new CompoundTag();
+            row.putString("profile", profile);
+            row.putInt("count", count);
+            row.put("seats", new net.minecraft.nbt.ListTag());
             profiles.add(row);
         });
         tag.put("seatOffsets", profiles);

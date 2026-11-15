@@ -104,12 +104,15 @@ public final class PokemonSeatFallbackGameTests {
             "Server delegate did not apply the generated body-relative position");
         settings.setSeatOffset(RideablesSettingsData.profileKey(charizard),
             SeatFallbackPosition.slot(fallback).index(), 0.5, 1.25, -0.75);
+        settings.setSeatCount(RideablesSettingsData.profileKey(charizard), 5);
         RideablesSettingsData loadedSettings = RideablesSettingsData.load(
             settings.save(new CompoundTag(), null), null);
         helper.assertTrue(new RideablesSettingsData.Offset(0.5, 1.25, -0.75).equals(
                 loadedSettings.seatOffset(RideablesSettingsData.profileKey(charizard),
                     SeatFallbackPosition.slot(fallback).index())),
             "Per-form seat offsets did not survive SavedData serialization");
+        helper.assertTrue(loadedSettings.seatCount(RideablesSettingsData.profileKey(charizard)) == 5,
+            "Per-form minimum seat count did not survive SavedData serialization");
         settings.setGroundFallbackSpeed(0.08);
         loadedSettings = RideablesSettingsData.load(settings.save(new CompoundTag(), null), null);
         helper.assertTrue(loadedSettings.groundFallbackEnabled()
@@ -128,8 +131,8 @@ public final class PokemonSeatFallbackGameTests {
 
         settings.setMinimumSeats(4);
         PokemonEntity expanded = createPokemon(helper, level, "charizard", 4, true);
-        helper.assertTrue(expanded.getSeats().stream().filter(seat -> SeatFallbackPosition.slot(seat) != null).count() == 3,
-            "Admin minimum-seat setting must add only seats beyond the native profile");
+        helper.assertTrue(expanded.getSeats().stream().filter(seat -> SeatFallbackPosition.slot(seat) != null).count() == 4,
+            "Per-form seat minimum must add only seats beyond the native profile");
         settings.setMinimumSeats(2);
         settings.setGroundFallbackEnabled(false);
         helper.assertTrue(bulbasaur.getSeats().isEmpty(),

@@ -27,6 +27,7 @@ public final class BackseatRiders {
     public BackseatRiders(IEventBus modEventBus) {
         NeoForge.EVENT_BUS.register(this);
         modEventBus.addListener(this::registerGameTests);
+        modEventBus.addListener(SeatEditorPayloads::register);
     }
 
     public void registerGameTests(RegisterGameTestsEvent event) {
@@ -77,6 +78,12 @@ public final class BackseatRiders {
                                                 DoubleArgumentType.getDouble(ctx, "x"),
                                                 DoubleArgumentType.getDouble(ctx, "y"),
                                                 DoubleArgumentType.getDouble(ctx, "z")))))))))
+                .then(Commands.literal("editor")
+                    .then(Commands.argument("species", StringArgumentType.word())
+                        .then(Commands.argument("form", StringArgumentType.word())
+                            .executes(ctx -> openSeatEditor(ctx.getSource().getPlayerOrException(),
+                                StringArgumentType.getString(ctx, "species"),
+                                StringArgumentType.getString(ctx, "form"))))))
                 .then(Commands.literal("clear-seat-offset")
                     .then(Commands.argument("species", StringArgumentType.word())
                         .then(Commands.argument("form", StringArgumentType.word())
@@ -214,6 +221,12 @@ public final class BackseatRiders {
         admin.sendSystemMessage(Component.literal(changed ? "Generated seat offset cleared for " + profile + "."
             : "No custom generated seat offset was set for " + profile + "."));
         return changed ? 1 : 0;
+    }
+
+    private static int openSeatEditor(ServerPlayer admin, String species, String form) {
+        String profile = RideablesSettingsData.profileKey(species, form);
+        SeatEditorPayloads.openFor(admin, profile);
+        return 1;
     }
 }
 

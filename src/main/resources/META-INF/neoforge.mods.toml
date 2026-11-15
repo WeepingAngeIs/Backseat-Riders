@@ -5,7 +5,7 @@ license="MIT"
 modId="backseatriders"
 version="${file.jarVersion}"
 displayName="Backseat Riders"
-description='''Owner-managed trusted riders for native Cobblemon Pok�mon. Requires Cobblemon 1.8.4 on NeoForge 1.21.1.'''
+description='''Owner-managed trusted riders, generic ground fallback riding, and an operator seat editor for Cobblemon Pokemon. Requires Cobblemon 1.8.4 on NeoForge 1.21.1.'''
 [[dependencies.backseatriders]]
 modId="neoforge"
 type="required"
@@ -26,4 +26,5 @@ type="required"
 versionRange="[1.8.4,1.9)"
 ordering="AFTER"
 side="BOTH"
+
 

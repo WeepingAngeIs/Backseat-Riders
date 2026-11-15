@@ -88,9 +88,10 @@ public abstract class PokemonSeatFallbackMixin implements PokemonSeatFallbackAcc
             pokemon.getEntityData().set(backseatriders$syncedGroundFallback, groundFallback);
             pokemon.getEntityData().set(backseatriders$syncedGroundSpeed, (float) settings.groundFallbackSpeed());
             boolean mayGenerateSeats = nativeBehavior || groundFallback;
+            String profile = RideablesSettingsData.profileKey(pokemon);
             targetCount = !mayGenerateSeats ? nativeSeats.size() : SeatFallbackPolicy.effectiveSeatCount(nativeSeats.size(),
                 backseatriders$hasNativeBehaviorWithoutSeatProfile(pokemon) || groundFallback,
-                settings.minimumSeats(),
+                settings.seatCount(profile),
                 pokemon.getOccupiedSeats().size(), backseatriders$highestOccupiedFallbackIndex(pokemon));
             pokemon.getEntityData().set(backseatriders$syncedSeatCount, targetCount);
         } else {
