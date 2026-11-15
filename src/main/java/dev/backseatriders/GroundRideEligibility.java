@@ -2,6 +2,7 @@ package dev.backseatriders;
 
 import com.cobblemon.mod.common.api.riding.RidingProperties;
 import com.cobblemon.mod.common.entity.pokemon.PokemonEntity;
+import java.util.UUID;
 import net.minecraft.server.level.ServerPlayer;
 
 /** Keeps the generic controller limited to authorized owners of behaviorless Pok�mon. */
@@ -29,10 +30,14 @@ public final class GroundRideEligibility {
 
     public static boolean mayDrive(PokemonEntity pokemon, net.minecraft.world.entity.player.Player rider) {
         if (!(rider instanceof ServerPlayer serverRider)) {
+            UUID owner = RideableTrustData.ownerId(pokemon);
+            boolean authorizedController = owner != null && owner.equals(rider.getUUID())
+                || pokemon.getControllingPassenger() == rider;
             return ((PokemonSeatFallbackAccess) pokemon).backseatriders$isGroundFallbackEnabled()
-                && !hasNativeRidingBehaviour(pokemon) && !pokemon.isBattling() && !pokemon.isEvolving()
-                && !pokemon.isBusy() && pokemon.getTethering() == null && pokemon.getBeamMode() != 3
-                && pokemon.getOwnerUUID() != null && pokemon.getOwnerUUID().equals(rider.getUUID());
+                && !hasNativeRidingBehaviour(pokemon) && pokemon.isAlive() && !pokemon.isRemoved()
+                && !pokemon.isBattling() && pokemon.getBattleId() == null && !pokemon.isEvolving()
+                && !pokemon.isBusy() && pokemon.getTethering() == null
+                && pokemon.getBeamMode() != 3 && !pokemon.isBattleClone() && authorizedController;
         }
         var settings = RideablesSettingsData.get(serverRider.serverLevel());
         var owner = RideableTrustData.ownerId(pokemon);
