@@ -36,6 +36,10 @@ dependencies {
     testImplementation 'org.junit.jupiter:junit-jupiter:5.11.4'
 }
 
+tasks.register('resolveRuntimeClasspath') {
+    doLast { configurations.runtimeClasspath.files.each { println it.absolutePath } }
+}
+
 tasks.withType(JavaCompile).configureEach { options.encoding = 'UTF-8'; options.release = 21 }
 tasks.withType(Test).configureEach { useJUnitPlatform() }
 tasks.jar { manifest { attributes('MixinConfigs': 'backseatriders.mixins.json') } }
