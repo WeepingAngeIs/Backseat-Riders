@@ -72,6 +72,7 @@ jobs:
             cat game-test.log
             exit 1
           fi
+          cat game-test.log
           grep -Ei 'fallback|GameTestServer|tests? passed|Done \(' game-test.log
           grep -q 'PokemonSeatFallbackServerMixin' game-test.log
           grep -qi 'fallbackSeatsAndServerPosition' game-test.log
