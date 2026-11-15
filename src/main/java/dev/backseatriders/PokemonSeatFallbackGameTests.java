@@ -238,33 +238,47 @@ public final class PokemonSeatFallbackGameTests {
             Class<?> apiClass = Class.forName("xaero.pac.common.server.api.OpenPACServerAPI", true, loader);
             Object api = apiClass.getMethod("get", net.minecraft.server.MinecraftServer.class)
                 .invoke(null, level.getServer());
+            Class<?> claimsApiClass = Class.forName(
+                "xaero.pac.common.server.claims.api.IServerClaimsManagerAPI", true, loader);
             Object claimManager = apiClass.getMethod("getServerClaimsManager").invoke(api);
-            Method claimMethod = claimManager.getClass().getMethod("tryToClaim",
+            Object result = claimsApiClass.getMethod("tryToClaim",
                 ResourceLocation.class, UUID.class, int.class, ResourceLocation.class,
-                int.class, int.class, int.class, int.class, boolean.class);
-            Object result = claimMethod.invoke(claimManager, dimension, owner.getUUID(), 0,
-                dimension, chunk.x, chunk.z, chunk.x, chunk.z, true);
+                int.class, int.class, int.class, int.class, boolean.class)
+                .invoke(claimManager, dimension, owner.getUUID(), 0,
+                    dimension, chunk.x, chunk.z, chunk.x, chunk.z, true);
             String resultType = String.valueOf(result.getClass().getMethod("getResultType").invoke(result));
             helper.assertTrue("SUCCESSFUL_CLAIM".equals(resultType),
                 "OPAC smoke could not create its disposable claim: " + resultType);
             Object claim = result.getClass().getMethod("getClaimResult").invoke(result);
 
+            Class<?> protectionApiClass = Class.forName(
+                "xaero.pac.common.server.claims.protection.api.IChunkProtectionAPI", true, loader);
             Object protection = apiClass.getMethod("getChunkProtection").invoke(api);
             Class<?> claimApiClass = Class.forName(
                 "xaero.pac.common.claims.player.api.IPlayerChunkClaimAPI", true, loader);
-            Object claimConfig = protection.getClass().getMethod("getConfig", claimApiClass).invoke(protection, claim);
+            Object claimConfig = protectionApiClass.getMethod("getConfig", claimApiClass).invoke(protection, claim);
 
             Object configManager = apiClass.getMethod("getPlayerConfigManager").invoke(api);
-            Object ownerConfig = configManager.getClass().getMethod("getLoadedConfig", UUID.class)
+            Class<?> configManagerApiClass = Class.forName(
+                "xaero.pac.common.server.player.config.api.v2.IPlayerConfigManagerAPI", true, loader);
+            Object ownerConfig = configManagerApiClass.getMethod("getLoadedConfig", UUID.class)
                 .invoke(configManager, owner.getUUID());
-            Object groupManager = ownerConfig.getClass().getMethod("getPlayerGroups").invoke(ownerConfig);
+            Class<?> ownerConfigApiClass = Class.forName(
+                "xaero.pac.common.server.player.config.api.v2.IPlayerConfigAPI", true, loader);
+            Object groupManager = ownerConfigApiClass.getMethod("getPlayerGroups").invoke(ownerConfig);
+            Class<?> groupManagerApiClass = Class.forName(
+                "xaero.pac.common.server.player.config.group.api.IServerPlayerConfigGroupManagerAPI", true, loader);
             String groupId = "bsr-smoke-trusted";
-            Object addResult = groupManager.getClass().getMethod("addCustom", String.class)
+            Object addResult = groupManagerApiClass.getMethod("addCustom", String.class)
                 .invoke(groupManager, groupId);
-            Object groupOptional = addResult.getClass().getMethod("left").invoke(addResult);
+            Class<?> eitherClass = Class.forName("com.mojang.datafixers.util.Either", true, loader);
+            Object groupOptional = eitherClass.getMethod("left").invoke(addResult);
             Object trustedGroup = ((java.util.Optional<?>) groupOptional).orElseThrow(
                 () -> new AssertionError("OPAC smoke could not create a temporary trusted-player group"));
-            trustedGroup.getClass().getMethod("includeMember", UUID.class, String.class)
+            Class<?> customGroupApiClass = Class.forName(
+                "xaero.pac.common.server.player.config.group.custom.api.ICustomPlayerConfigGroupAPI",
+                true, loader);
+            customGroupApiClass.getMethod("includeMember", UUID.class, String.class)
                 .invoke(trustedGroup, trusted.getUUID(), null);
 
             Class<?> optionsClass = Class.forName(
@@ -272,8 +286,10 @@ public final class PokemonSeatFallbackGameTests {
             Object playerExceptionOption = optionsClass.getField("CLAIM_EXCEPTION_ENTITIES_BY_PLAYERS").get(null);
             Class<?> optionClass = Class.forName(
                 "xaero.pac.common.server.player.config.api.v2.IPlayerConfigOptionSpecAPI", true, loader);
-            Method setOption = claimConfig.getClass().getMethod("tryToSet", optionClass, Object.class);
-            setOption.invoke(claimConfig, playerExceptionOption, groupId);
+            Class<?> claimConfigApiClass = Class.forName(
+                "xaero.pac.common.server.player.config.api.v2.IPlayerConfigAPI", true, loader);
+            claimConfigApiClass.getMethod("tryToSet", optionClass, Object.class)
+                .invoke(claimConfig, playerExceptionOption, groupId);
 
             helper.assertTrue(!OpenPartiesClaimsProtection.deniesMount(owner, target, InteractionHand.MAIN_HAND),
                 "OPAC's actual entity protection API should allow the claim owner");
