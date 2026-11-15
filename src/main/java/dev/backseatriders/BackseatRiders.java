@@ -152,6 +152,7 @@ public final class BackseatRiders {
         boolean trusted = !owner.equals(rider.getUUID()) && RideableTrustData.isTrustedOwner(owner, rider);
         if (!FriendlyAnimalRidePolicy.mayMount(true, owners.isRegistered(animal), true, true,
                 animal.isAlive(), animal.isRemoved(), animal.getPassengers().size(), owner, rider.getUUID(), trusted)) return;
+        if (OpenPartiesClaimsProtection.deniesMount(rider, animal, event.getHand())) return;
         if (FriendlyAnimalMountAttempt.startRiding(animal, rider)) {
             event.setCanceled(true);
             event.setCancellationResult(InteractionResult.CONSUME);
@@ -266,7 +267,7 @@ public final class BackseatRiders {
 
     private static int handoffDriver(ServerPlayer requester, String playerKey) {
         if (!(requester.getVehicle() instanceof PokemonEntity pokemon)) {
-            requester.sendSystemMessage(Component.literal("You must be riding a Pokémon to hand over steering."));
+            requester.sendSystemMessage(Component.literal("You must be riding a Pok�mon to hand over steering."));
             return 0;
         }
         if (!(RideableTrustData.isOwner(pokemon, requester)
@@ -277,14 +278,14 @@ public final class BackseatRiders {
         UUID targetId = resolvePlayerId(requester, playerKey);
         ServerPlayer target = targetId == null ? null : requester.getServer().getPlayerList().getPlayer(targetId);
         if (target == null || target.getVehicle() != pokemon) {
-            requester.sendSystemMessage(Component.literal("The selected player must be online and riding this Pokémon."));
+            requester.sendSystemMessage(Component.literal("The selected player must be online and riding this Pok�mon."));
             return 0;
         }
         boolean eligible = GroundRideEligibility.hasNativeRidingBehaviour(pokemon)
             ? RideableTrustData.isOwner(pokemon, target) || RideableTrustData.isTrustedDriver(pokemon, target)
             : GroundRideEligibility.mayDrive(pokemon, target);
         if (!eligible) {
-            requester.sendSystemMessage(Component.literal("That rider is not authorized to drive this Pokémon."));
+            requester.sendSystemMessage(Component.literal("That rider is not authorized to drive this Pok�mon."));
             return 0;
         }
         ((PokemonDriverHandoffAccess) pokemon).backseatriders$requestDriver(java.util.Optional.of(target.getUUID()));
@@ -296,7 +297,7 @@ public final class BackseatRiders {
         if (!(requester.getVehicle() instanceof PokemonEntity pokemon)
                 || !(RideableTrustData.isOwner(pokemon, requester)
                     || RideableTrustData.isTrustedDriver(pokemon, requester))) {
-            requester.sendSystemMessage(Component.literal("You must be an authorized driver on a Pokémon to reset steering."));
+            requester.sendSystemMessage(Component.literal("You must be an authorized driver on a Pok�mon to reset steering."));
             return 0;
         }
         ((PokemonDriverHandoffAccess) pokemon).backseatriders$requestDriver(java.util.Optional.empty());
@@ -359,8 +360,8 @@ public final class BackseatRiders {
                         && !GroundRideEligibility.hasNativeRidingBehaviour(pokemon)) rider.stopRiding();
             }
         }
-        admin.sendSystemMessage(Component.literal("Behaviorless Pokémon ground fallback is "
-            + (enabled ? "enabled." : "disabled; passengers on behaviorless Pokémon were dismounted.")));
+        admin.sendSystemMessage(Component.literal("Behaviorless Pok�mon ground fallback is "
+            + (enabled ? "enabled." : "disabled; passengers on behaviorless Pok�mon were dismounted.")));
         return 1;
     }
 
@@ -381,7 +382,7 @@ public final class BackseatRiders {
 
     private static int setGroundFallbackSpeed(ServerPlayer admin, double speed) {
         RideablesSettingsData.get(admin.serverLevel()).setGroundFallbackSpeed(speed);
-        admin.sendSystemMessage(Component.literal("Behaviorless Pokémon ground speed set to " + speed
+        admin.sendSystemMessage(Component.literal("Behaviorless Pok�mon ground speed set to " + speed
             + " blocks per tick (allowed range 0.02-0.12)."));
         return 1;
     }
