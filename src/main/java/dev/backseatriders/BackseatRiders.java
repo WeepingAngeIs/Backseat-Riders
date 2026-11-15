@@ -19,6 +19,7 @@ import net.neoforged.bus.api.SubscribeEvent;
 import net.neoforged.bus.api.IEventBus;
 import net.neoforged.neoforge.event.RegisterGameTestsEvent;
 import net.neoforged.fml.common.Mod;
+import net.neoforged.fml.event.lifecycle.FMLClientSetupEvent;
 import net.neoforged.neoforge.common.NeoForge;
 import net.neoforged.neoforge.event.RegisterCommandsEvent;
 import net.neoforged.neoforge.event.server.ServerStartedEvent;
@@ -33,6 +34,7 @@ public final class BackseatRiders {
         NeoForge.EVENT_BUS.addListener(this::runRequestedGameTests);
         modEventBus.addListener(this::registerGameTests);
         modEventBus.addListener(SeatEditorPayloads::register);
+        modEventBus.addListener(this::loadClientSeatDelegateForSmoke);
     }
 
     public void registerGameTests(RegisterGameTestsEvent event) {
@@ -43,6 +45,18 @@ public final class BackseatRiders {
         if (!Boolean.getBoolean("backseatriders.runGameTests")) return;
         event.getServer().getCommands().performPrefixedCommand(
             event.getServer().createCommandSourceStack().withPermission(4), "test runall");
+    }
+
+    private void loadClientSeatDelegateForSmoke(FMLClientSetupEvent event) {
+        if (!Boolean.getBoolean("backseatriders.forceClientSeatMixin")) return;
+        event.enqueueWork(() -> {
+            try {
+                Class.forName("com.cobblemon.mod.common.client.entity.PokemonClientDelegate", true,
+                    BackseatRiders.class.getClassLoader());
+            } catch (ClassNotFoundException failure) {
+                throw new IllegalStateException("Cobblemon client riding delegate was not found", failure);
+            }
+        });
     }
 
     @SubscribeEvent
