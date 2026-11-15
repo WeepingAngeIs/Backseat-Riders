@@ -130,6 +130,7 @@ public final class PokemonSeatFallbackGameTests {
             "Native six-seat species must keep its original seat count");
 
         settings.setMinimumSeats(4);
+        settings.setSeatCount(RideablesSettingsData.profileKey(charizard), 4);
         PokemonEntity expanded = createPokemon(helper, level, "charizard", 4, true);
         helper.assertTrue(expanded.getSeats().stream().filter(seat -> SeatFallbackPosition.slot(seat) != null).count() == 4,
             "Per-form seat minimum must add only seats beyond the native profile");
