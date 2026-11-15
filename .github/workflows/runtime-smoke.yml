@@ -43,7 +43,7 @@ jobs:
           JAVA_TOOL_OPTIONS: -Dmixin.debug.verbose=true -Dmixin.debug.export=true
         run: |
           mkdir -p smoke-run
-          printf 'eula=true\n' > smoke-run/eula.txt
+          printf 'eula=true\\n' > smoke-run/eula.txt
           timeout --signal=TERM 8m gradle --no-daemon runServer --stacktrace > server-smoke.log 2>&1 &
           server_pid=$!
           for attempt in $(seq 1 480); do
@@ -56,7 +56,7 @@ jobs:
             kill "$server_pid" 2>/dev/null || true
             exit 1
           fi
-          grep -E 'Done \(|PokemonRidingMixin|PokemonSeatFallbackMixin|HorseBackseatMixin' server-smoke.log
+          grep -E 'Done \\(|PokemonRidingMixin|PokemonSeatFallbackMixin|HorseBackseatMixin' server-smoke.log
           grep -q 'PokemonRidingMixin' server-smoke.log
           grep -q 'PokemonSeatFallbackMixin' server-smoke.log
           grep -q 'HorseBackseatMixin' server-smoke.log
@@ -67,15 +67,16 @@ jobs:
           JAVA_TOOL_OPTIONS: -Dmixin.debug.verbose=true -Dmixin.debug.export=true
         run: |
           mkdir -p smoke-gametest
-          printf 'eula=true\n' > smoke-gametest/eula.txt
+          printf 'eula=true\\n' > smoke-gametest/eula.txt
           if ! timeout --signal=TERM 8m gradle --no-daemon runGameTestServer --stacktrace > game-test.log 2>&1; then
             cat game-test.log
             exit 1
           fi
           cat game-test.log
-          grep -Ei 'fallback|GameTestServer|tests? passed|Done \(' game-test.log
+          grep -Ei 'fallback|GameTestServer|tests? passed|Done \\(' game-test.log
           grep -q 'PokemonSeatFallbackServerMixin' game-test.log
-          grep -qi 'fallbackSeatsAndServerPosition' game-test.log
+          grep -q '1 tests are now running' game-test.log
+          grep -q 'All 1 required tests passed' game-test.log
       - name: Preserve disposable server and GameTest logs
         if: always()
         uses: actions/upload-artifact@v4
