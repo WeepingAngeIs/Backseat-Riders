@@ -15,9 +15,11 @@ import net.minecraft.gametest.framework.GameTestHelper;
 import net.neoforged.neoforge.gametest.PrefixGameTestTemplate;
 import net.minecraft.resources.ResourceLocation;
 import net.minecraft.server.level.ServerLevel;
+import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.world.entity.Entity;
 import net.minecraft.world.entity.EntityType;
 import net.minecraft.world.phys.Vec3;
+import net.neoforged.neoforge.common.util.FakePlayerFactory;
 
 @PrefixGameTestTemplate(false)
 public final class PokemonSeatFallbackGameTests {
@@ -41,6 +43,27 @@ public final class PokemonSeatFallbackGameTests {
             .anyMatch(seat -> SeatFallbackPosition.slot(seat) != null);
         helper.assertTrue(bulbasaurHasFallback && !behaviorWithoutSeatProfile,
             "Bulbasaur fallback must be generated without claiming it has a native profile");
+
+        ServerPlayer simulatedOwner = FakePlayerFactory.getMinecraft(level);
+        if (simulatedOwner.getVehicle() != null) simulatedOwner.stopRiding();
+        PokemonEntity ownedBulbasaur = createPokemonEntity(helper, level, "bulbasaur");
+        ownedBulbasaur.setOwnerUUID(simulatedOwner.getUUID());
+        helper.assertTrue(ownedBulbasaur.isRideableFor(simulatedOwner),
+            "An owned behaviorless Pok�mon should pass the safe ground fallback gate");
+        helper.assertTrue(simulatedOwner.startRiding(ownedBulbasaur, true),
+            "The owner could not board the behaviorless Pok�mon through vanilla mounting");
+        ownedBulbasaur.setOccupiedSeats(new HashMap<>(Map.of(ownedBulbasaur.getSeats().get(0), simulatedOwner)));
+        ownedBulbasaur.setPos(30.0, 5.0, 30.0);
+        ownedBulbasaur.setYRot(0.0F);
+        ownedBulbasaur.setOnGround(true);
+        ownedBulbasaur.setDeltaMovement(Vec3.ZERO);
+        simulatedOwner.zza = 1.0F;
+        double startZ = ownedBulbasaur.getZ();
+        ownedBulbasaur.travel(Vec3.ZERO);
+        helper.assertTrue(ownedBulbasaur.getZ() > startZ,
+            "Ground fallback controller input did not move the owned Pok�mon forward");
+        simulatedOwner.zza = 0.0F;
+        simulatedOwner.stopRiding();
 
         Seat fallback = charizard.getSeats().stream()
             .filter(seat -> SeatFallbackPosition.slot(seat) != null)
