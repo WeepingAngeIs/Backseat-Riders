@@ -29,7 +29,7 @@ jobs:
           compile_cp="$(gradle --no-daemon --quiet printCompileClasspath)"
           cobblemon_jar="$(printf '%s' "$compile_cp" | tr ':' '\n' | grep -Ei 'MdwFAVRL|cobblemon' | head -1)"
           if [ -n "$cobblemon_jar" ]; then
-            javap -classpath "$cobblemon_jar" -p -c com.cobblemon.mod.common.entity.pokemon.PokemonEntity | sed -n '/isRideableFor(/,/^  public/p' | head -100
+            javap -classpath "$cobblemon_jar" -p -c com.cobblemon.mod.common.entity.pokemon.PokemonEntity | grep -A90 -B2 -E 'ifRidingAvailableSupply|isRideableFor'
           fi
       - uses: actions/upload-artifact@v4
         with:
