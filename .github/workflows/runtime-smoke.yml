@@ -30,6 +30,16 @@ jobs:
             | while read -r class_name; do javap -classpath "$cobblemon_jar" -p -c "$class_name"; done \
             > riding-api.log
           grep -E 'positionRider|getSeatLocator|getPassengerOffsets|getSeats|Seat\(' riding-api.log
+      - name: Add the installed KotlinForForge provider to the disposable run
+        run: |
+          mkdir -p smoke-run/mods
+          versions=$(curl -fsSLG \
+            --data-urlencode 'loaders=["neoforge"]' \
+            --data-urlencode 'game_versions=["1.21.1"]' \
+            https://api.modrinth.com/v2/project/kotlin-for-forge/version)
+          url=$(printf '%s' "$versions" | jq -r '.[] | select(.version_number == "5.12.0") | .files[] | select(.primary == true) | .url' | head -n 1)
+          test -n "$url"
+          curl -fsSL "$url" -o smoke-run/mods/kotlinforforge-5.12.0-all.jar
       - name: Start disposable NeoForge server with Cobblemon 1.8.4
         env:
           JAVA_TOOL_OPTIONS: -Dmixin.debug.verbose=true -Dmixin.debug.export=true
