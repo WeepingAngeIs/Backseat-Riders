@@ -10,6 +10,8 @@ import net.minecraft.world.InteractionResult;
 import net.minecraft.world.entity.animal.horse.AbstractHorse;
 import net.minecraft.world.entity.Entity;
 import net.neoforged.bus.api.SubscribeEvent;
+import net.neoforged.bus.api.IEventBus;
+import net.neoforged.neoforge.event.RegisterGameTestsEvent;
 import net.neoforged.fml.common.Mod;
 import net.neoforged.neoforge.common.NeoForge;
 import net.neoforged.neoforge.event.RegisterCommandsEvent;
@@ -19,7 +21,14 @@ import net.neoforged.neoforge.event.entity.player.PlayerInteractEvent;
 public final class BackseatRiders {
     public static final String MOD_ID = "backseatriders";
 
-    public BackseatRiders() { NeoForge.EVENT_BUS.register(this); }
+    public BackseatRiders(IEventBus modEventBus) {
+        NeoForge.EVENT_BUS.register(this);
+        modEventBus.addListener(this::registerGameTests);
+    }
+
+    public void registerGameTests(RegisterGameTestsEvent event) {
+        event.register(PokemonSeatFallbackGameTests.class);
+    }
 
     @SubscribeEvent
     public void registerCommands(RegisterCommandsEvent event) {
