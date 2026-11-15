@@ -18,6 +18,7 @@ jobs:
       - uses: gradle/actions/setup-gradle@v4
         with:
           gradle-version: '8.10.2'
+          cache-read-only: false
       - name: Inspect installed Cobblemon riding delegate bytecode
         run: |
           gradle --no-daemon -q resolveRuntimeClasspath
