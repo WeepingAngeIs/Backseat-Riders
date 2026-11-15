@@ -85,6 +85,22 @@ public final class PokemonSeatFallbackGameTests {
         helper.assertTrue(ownedBulbasaur.getControllingPassenger() != trustedDriver,
             "Revoking trust must immediately end a requested steering handoff");
         trustedDriver.stopRiding();
+        helper.assertTrue(ownedBulbasaur.getControllingPassenger() == simulatedOwner,
+            "A stale handoff must fall back to the still-authorized owner after its rider dismounts");
+
+        ServerPlayer departingDriver = createConnectedTestPlayer(helper, level);
+        trust.trust(simulatedOwner.getUUID(), departingDriver.getUUID());
+        helper.assertTrue(departingDriver.startRiding(ownedBulbasaur, true),
+            "A trusted rider could not board before disconnect cleanup verification");
+        ((PokemonDriverHandoffAccess) ownedBulbasaur).backseatriders$requestDriver(
+            java.util.Optional.of(departingDriver.getUUID()));
+        helper.assertTrue(ownedBulbasaur.getControllingPassenger() == departingDriver,
+            "The trusted rider could not receive steering before disconnect cleanup verification");
+        departingDriver.remove(Entity.RemovalReason.DISCARDED);
+        helper.assertTrue(!ownedBulbasaur.getPassengers().contains(departingDriver)
+                && ownedBulbasaur.getControllingPassenger() == simulatedOwner,
+            "A removed/disconnected driver must be discarded and control must return to the owner");
+
         ownedBulbasaur.setPos(30.0, 5.0, 30.0);
         ownedBulbasaur.setYRot(0.0F);
         ownedBulbasaur.setOnGround(true);
