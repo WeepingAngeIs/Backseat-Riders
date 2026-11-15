@@ -21,7 +21,7 @@ import org.spongepowered.asm.mixin.Unique;
 import org.spongepowered.asm.mixin.injection.At;
 import org.spongepowered.asm.mixin.injection.Inject;
 import org.spongepowered.asm.mixin.injection.Redirect;
-import org.spongepowered.asm.mixin.injection.ModifyVariable;
+import org.objectweb.asm.Opcodes;
 import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
 import org.spongepowered.asm.mixin.injection.callback.CallbackInfoReturnable;
 
@@ -106,13 +106,15 @@ public abstract class PokemonRidingMixin {
     }
 
     /** Replace only the behavior-provided input vector; Cobblemon retains its own collision, friction, and gravity path. */
-    @ModifyVariable(method = "travel", at = @At(value = "STORE", ordinal = 0), ordinal = 0, remap = false)
-    private Vec3 backseatriders$groundOnlyInput(Vec3 nativeInput) {
+    @Redirect(method = "travel", at = @At(value = "FIELD",
+        target = "Lnet/minecraft/world/phys/Vec3;ZERO:Lnet/minecraft/world/phys/Vec3;",
+        opcode = Opcodes.GETSTATIC, ordinal = 0), remap = false)
+    private Vec3 backseatriders$groundOnlyInput() {
         PokemonEntity pokemon = (PokemonEntity) (Object) this;
         PokemonSeatFallbackAccess access = (PokemonSeatFallbackAccess) pokemon;
-        if (!access.backseatriders$isGroundFallbackEnabled()) return nativeInput;
+        if (!access.backseatriders$isGroundFallbackEnabled()) return Vec3.ZERO;
         LivingEntity controlling = pokemon.getControllingPassenger();
-        if (!(controlling instanceof Player rider) || !GroundRideEligibility.mayDrive(pokemon, rider)) return nativeInput;
+        if (!(controlling instanceof Player rider) || !GroundRideEligibility.mayDrive(pokemon, rider)) return Vec3.ZERO;
         if (!pokemon.onGround() || pokemon.isInWaterOrBubble()) return Vec3.ZERO;
 
         pokemon.setYRot(rider.getYRot());
