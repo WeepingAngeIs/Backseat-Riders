@@ -3,11 +3,10 @@ package dev.backseatriders.mixin;
 import com.cobblemon.mod.common.client.entity.PokemonClientDelegate;
 import com.cobblemon.mod.common.entity.pokemon.PokemonEntity;
 import com.cobblemon.mod.common.api.riding.Seat;
+import com.cobblemon.mod.common.client.render.models.blockbench.PosableState;
 import dev.backseatriders.SeatFallbackPosition;
-import java.util.Map;
 import net.minecraft.world.entity.Entity;
 import org.spongepowered.asm.mixin.Mixin;
-import org.spongepowered.asm.mixin.Shadow;
 import org.spongepowered.asm.mixin.injection.At;
 import org.spongepowered.asm.mixin.injection.Inject;
 import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
@@ -16,7 +15,6 @@ import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
 @Mixin(value = PokemonClientDelegate.class, remap = false)
 public abstract class PokemonSeatFallbackClientMixin {
     @Shadow public abstract PokemonEntity getCurrentEntity();
-    @Shadow public abstract Map<String, ?> getLocatorStates();
 
     @Inject(method = "positionRider", at = @At("TAIL"), remap = false)
     private void backseatriders$positionGeneratedSeat(Entity passenger, Entity.MoveFunction updater,
@@ -25,7 +23,7 @@ public abstract class PokemonSeatFallbackClientMixin {
         if (pokemon == null) return;
         Seat seat = pokemon.getSeatForPassenger(passenger);
         if (SeatFallbackPosition.slot(seat) == null) return;
-        if (seat.getLocator() != null && getLocatorStates().containsKey(seat.getLocator())) {
+        if (seat.getLocator() != null && ((PosableState) (Object) this).getLocatorStates().containsKey(seat.getLocator())) {
             SeatFallbackPosition.applyLocatorOffset(pokemon, passenger, updater);
         } else {
             SeatFallbackPosition.position(pokemon, passenger, updater);
