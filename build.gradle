@@ -34,4 +34,5 @@ dependencies {
 tasks.withType(JavaCompile).configureEach { options.encoding = 'UTF-8'; options.release = 21 }
 tasks.withType(Test).configureEach { useJUnitPlatform() }
 tasks.jar { manifest { attributes('MixinConfigs': 'backseatriders.mixins.json') } }
+tasks.register('printCompileClasspath') { doLast { println sourceSets.main.compileClasspath.asPath } }
 

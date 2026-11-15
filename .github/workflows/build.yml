@@ -26,7 +26,8 @@ jobs:
         if: always()
         continue-on-error: true
         run: |
-          cobblemon_jar="$(find ~/.gradle/caches/modules-2/files-2.1/maven.modrinth/MdwFAVRL/xsVHrAsY -name '*.jar' -print -quit)"
+          compile_cp="$(gradle --no-daemon --quiet printCompileClasspath)"
+          cobblemon_jar="$(printf '%s' "$compile_cp" | tr ':' '\n' | grep -Ei 'MdwFAVRL|cobblemon' | head -1)"
           if [ -n "$cobblemon_jar" ]; then
             javap -classpath "$cobblemon_jar" -p -c com.cobblemon.mod.common.entity.pokemon.PokemonEntity | sed -n '/isRideableFor(/,/^  public/p' | head -100
           fi
