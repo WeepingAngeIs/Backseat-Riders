@@ -122,7 +122,7 @@ public final class BackseatRiders {
 
     private static int setMinimumSeats(ServerPlayer admin, int count) {
         RideablesSettingsData.get(admin.serverLevel()).setMinimumSeats(count);
-        admin.sendSystemMessage(Component.literal("Minimum Pok�mon seats set to " + count + ". Existing larger seat counts are preserved."));
+        admin.sendSystemMessage(Component.literal("Minimum Pokemon seats set to " + count + ". Existing larger seat counts are preserved."));
         return 1;
     }
 
