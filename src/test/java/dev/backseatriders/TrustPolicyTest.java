@@ -23,5 +23,14 @@ class TrustPolicyTest {
     @Test void missingOwnerIsDenied() {
         assertFalse(TrustPolicy.permits(null, rider, Set.of(rider)));
     }
+
+    @Test void nativePassengerGateStillRejectsUntrustedRidersEvenWhenSomebodyIsMounted() {
+        assertTrue(RideAccessPolicy.passengerGateReportsEmpty(false, false));
+    }
+
+    @Test void trustedRidersUseTheOwnerExceptionWithoutChangingOtherNativeChecks() {
+        assertFalse(RideAccessPolicy.passengerGateReportsEmpty(true, false));
+        assertTrue(RideAccessPolicy.passengerGateReportsEmpty(true, true));
+    }
 }
 

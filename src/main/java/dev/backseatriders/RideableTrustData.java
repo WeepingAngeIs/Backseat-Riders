@@ -31,26 +31,21 @@ public final class RideableTrustData extends SavedData {
         return owner != null && owner.equals(player.getUUID());
     }
 
-    public static boolean canRide(Entity entity, Player player) {
-        return hasFreeSeat(entity) && isTrusted(entity, player);
-    }
-
     public static boolean isTrusted(Entity entity, Player player) {
-        if (!(player instanceof ServerPlayer serverPlayer)) return false;
         UUID owner = ownerId(entity);
-        return owner != null && entity.isAlive()
-            && TrustPolicy.permits(owner, player.getUUID(), get(serverPlayer.serverLevel()).trusted(owner));
+        return owner != null && isTrustedOwner(owner, player);
     }
 
-    private static boolean hasFreeSeat(Entity entity) {
-        try {
-            Object seats = entity.getClass().getMethod("getSeats").invoke(entity);
-            Object occupied = entity.getClass().getMethod("getOccupiedSeats").invoke(entity);
-            return seats instanceof List<?> seatList && occupied instanceof Map<?, ?> occupiedMap
-                && seatList.size() > occupiedMap.size();
-        } catch (ReflectiveOperationException ignored) {
-            return false;
-        }
+    private static boolean isTrustedOwner(UUID owner, Player rider) {
+        if (!(rider instanceof ServerPlayer serverRider)) return false;
+        return TrustPolicy.permits(owner, rider.getUUID(), get(serverRider.serverLevel()).trusted(owner));
+    }
+
+    public static boolean ownerOrTrusted(Player owner, Player rider) {
+        if (owner.equals(rider)) return true;
+        if (!(owner instanceof ServerPlayer serverOwner) || !(rider instanceof ServerPlayer serverRider)) return false;
+        UUID ownerId = owner.getUUID();
+        return RideAccessPolicy.ownerGate(ownerId, rider.getUUID(), get(serverOwner.serverLevel()).trusted(ownerId));
     }
 
     public static UUID ownerId(Entity entity) {
