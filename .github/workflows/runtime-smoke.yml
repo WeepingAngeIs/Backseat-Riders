@@ -102,7 +102,7 @@ jobs:
           grep -q 'All 1 required tests passed' game-test.log
       - name: Start isolated client under Xvfb
         env:
-          JAVA_TOOL_OPTIONS: -Dmixin.debug.verbose=true
+          JAVA_TOOL_OPTIONS: -Dmixin.debug.verbose=true -Dbackseatriders.forceClientSeatMixin=true
         run: |
           sudo apt-get update
           sudo apt-get install -y xvfb
@@ -116,6 +116,7 @@ jobs:
           fi
           grep -E 'PokemonSeatFallbackMixin|Minecraft 1.21.1|Minecraft started' client-smoke.log
           grep -q 'PokemonSeatFallbackMixin' client-smoke.log
+          grep -q 'PokemonSeatFallbackClientMixin' client-smoke.log
       - name: Preserve disposable server and GameTest logs
         if: always()
         uses: actions/upload-artifact@v4
