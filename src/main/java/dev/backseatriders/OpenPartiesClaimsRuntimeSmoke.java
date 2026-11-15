@@ -55,7 +55,9 @@ public final class OpenPartiesClaimsRuntimeSmoke {
             System.getLogger("BackseatRiders/OPAC").log(System.Logger.Level.INFO,
                 "OPAC_SMOKE_OK: owner allowed, trusted group allowed, unrelated rider denied; "
                     + "missing-mod/API-failure policy verified");
-        } catch (ReflectiveOperationException failure) {
+        } catch (Throwable failure) {
+            System.getLogger("BackseatRiders/OPAC").log(System.Logger.Level.ERROR,
+                "OPAC_SMOKE_FAIL: " + failure, failure);
             throw new IllegalStateException("OPAC 0.33.0 interaction smoke failed", failure);
         }
     }
@@ -65,6 +67,7 @@ public final class OpenPartiesClaimsRuntimeSmoke {
         ServerPlayer owner = fakePlayer(server, level, "BsrClaimOwner");
         ServerPlayer trusted = fakePlayer(server, level, "BsrClaimTrusted");
         ServerPlayer stranger = fakePlayer(server, level, "BsrClaimStranger");
+        System.getLogger("BackseatRiders/OPAC").log(System.Logger.Level.INFO, "OPAC_SMOKE_PLAYERS_CREATED");
         Entity animal = EntityType.COW.create(level);
         if (animal == null) throw new AssertionError("Could not create disposable OPAC target cow");
         BlockPos pos = new BlockPos(320, level.getSeaLevel() + 2, 320);
@@ -77,6 +80,10 @@ public final class OpenPartiesClaimsRuntimeSmoke {
         Object claimsManager = apiClass.getMethod("getServerClaimsManager").invoke(api);
         Class<?> claimsApi = Class.forName(CLAIMS_API, true, loader);
         var chunk = animal.chunkPosition();
+        owner.setPos(pos.getX(), pos.getY(), pos.getZ());
+        trusted.setPos(pos.getX(), pos.getY(), pos.getZ());
+        stranger.setPos(pos.getX(), pos.getY(), pos.getZ());
+        System.getLogger("BackseatRiders/OPAC").log(System.Logger.Level.INFO, "OPAC_SMOKE_TARGET_CREATED");
         ResourceLocation dimension = level.dimension().location();
         Object result = claimsApi.getMethod("tryToClaim",
             ResourceLocation.class, UUID.class, int.class, ResourceLocation.class,
@@ -88,6 +95,7 @@ public final class OpenPartiesClaimsRuntimeSmoke {
             throw new AssertionError("Could not create isolated OPAC smoke claim: " + resultType);
         }
         Object claim = result.getClass().getMethod("getClaimResult").invoke(result);
+        System.getLogger("BackseatRiders/OPAC").log(System.Logger.Level.INFO, "OPAC_SMOKE_CLAIM_CREATED");
 
         Object protection = apiClass.getMethod("getChunkProtection").invoke(api);
         Class<?> protectionApi = Class.forName(PROTECTION_API, true, loader);
@@ -113,6 +121,7 @@ public final class OpenPartiesClaimsRuntimeSmoke {
         Object option = options.getField("CLAIM_EXCEPTION_ENTITIES_BY_PLAYERS").get(null);
         Class.forName(CONFIG_API, true, loader).getMethod("tryToSet",
             Class.forName(OPTION_API, true, loader), Object.class).invoke(claimConfig, option, groupId);
+        System.getLogger("BackseatRiders/OPAC").log(System.Logger.Level.INFO, "OPAC_SMOKE_GROUP_CONFIGURED");
 
         if (OpenPartiesClaimsProtection.deniesMount(owner, animal, InteractionHand.MAIN_HAND)) {
             throw new AssertionError("OPAC denied the claim owner");
@@ -135,7 +144,6 @@ public final class OpenPartiesClaimsRuntimeSmoke {
         Connection connection = new Connection(PacketFlow.SERVERBOUND);
         new EmbeddedChannel(connection);
         player.connection = new ServerGamePacketListenerImpl(server, connection, player, cookie);
-        if (!level.addFreshEntity(player)) throw new AssertionError("Could not add smoke player " + name);
         return player;
     }
 }
