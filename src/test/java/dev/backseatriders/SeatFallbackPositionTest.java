@@ -8,7 +8,7 @@ import org.junit.jupiter.api.Test;
 class SeatFallbackPositionTest {
     @Test
     void placesFallbackBehindAndAboveMountAtZeroYaw() {
-        var position = SeatFallbackPosition.bodyRelativePosition(1.0, 2.0, 3.0, 2.0, 3.0, 0.0f);
+        var position = SeatFallbackGeometry.bodyRelativePosition(1.0, 2.0, 3.0, 2.0, 3.0, 0.0f, 1, 1);
         assertEquals(1.0, position.x(), 1.0e-9);
         assertEquals(4.16, position.y(), 1.0e-9);
         assertEquals(3.6, position.z(), 1.0e-9);
@@ -16,7 +16,7 @@ class SeatFallbackPositionTest {
 
     @Test
     void rotatesRearOffsetWithMountYaw() {
-        var position = SeatFallbackPosition.bodyRelativePosition(1.0, 2.0, 3.0, 2.0, 3.0, 90.0f);
+        var position = SeatFallbackGeometry.bodyRelativePosition(1.0, 2.0, 3.0, 2.0, 3.0, 90.0f, 1, 1);
         assertEquals(0.4, position.x(), 1.0e-9);
         assertEquals(4.16, position.y(), 1.0e-9);
         assertEquals(3.0, position.z(), 1.0e-9);
@@ -24,11 +24,11 @@ class SeatFallbackPositionTest {
 
     @Test
     void clampsOffsetsForTinyAndHugeMountDimensions() {
-        var tiny = SeatFallbackPosition.bodyRelativePosition(0, 0, 0, 0.1, 0.1, 0.0f);
+        var tiny = SeatFallbackGeometry.bodyRelativePosition(0, 0, 0, 0.1, 0.1, 0.0f, 1, 1);
         assertEquals(0.15, tiny.y(), 1.0e-9);
         assertEquals(0.03, tiny.z(), 1.0e-9);
 
-        var huge = SeatFallbackPosition.bodyRelativePosition(0, 0, 0, 10.0, 10.0, 0.0f);
+        var huge = SeatFallbackGeometry.bodyRelativePosition(0, 0, 0, 10.0, 10.0, 0.0f, 1, 1);
         assertEquals(5.76, huge.y(), 1.0e-9);
         assertEquals(0.9, huge.z(), 1.0e-9);
     }
